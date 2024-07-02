@@ -193,7 +193,7 @@ def booking_window_open():
             return False
             
         elif not valid_passenger_amount:
-            messagebox.showerror("Invalid Passenger Amount", dropoff_msg, parent=booking_window)
+            messagebox.showerror("Invalid Passenger Amount", pax_msg, parent=booking_window)
             return False
             
         else:
