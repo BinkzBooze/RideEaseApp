@@ -256,7 +256,7 @@ def signup_window_open(event=None):
     # ---------------------------------------------------------------------------- #
 
     #Signup Window
-    current_signup_window = Tk()
+    current_signup_window = Toplevel(current_signup_window)
     current_signup_window.title("Ride Ease - Sign Up")
     current_signup_window.geometry("925x500+300+200")
     current_signup_window.configure(bg="white")
@@ -273,6 +273,7 @@ def signup_window_open(event=None):
     
     signup_logo_image_label = Label(current_signup_window, image=signup_logo_photo_image, bg="white")
     signup_logo_image_label.place(x=100, y=15)
+    signup_logo_image_label.image = signup_logo_photo_image
 
     #Signup Image
     signup_image_path = "images/sign up.jpg"
@@ -282,6 +283,7 @@ def signup_window_open(event=None):
 
     signup_image_label = Label(current_signup_window, image=signup_photo_image, bg="white")
     signup_image_label.place(x=40, y=175)
+    signup_image_label.image = signup_photo_image
 
     #Signup Frame
     global signup_frame
@@ -290,11 +292,6 @@ def signup_window_open(event=None):
 
     signup_heading=Label(signup_frame, text="Create an Account", fg="black", bg="#f8c81c", font=("Helvetica", 25, "bold"))
     signup_heading.place(x=29, y=20)
-
-    #Sign Up Button
-    signup_button = Button(signup_frame, width=20, pady=5, text="Sign Up", bg="white", fg="black", font=("Helvetica", 10), border=2, relief=RAISED, command=signup_clicked)
-    signup_button.place(x=90, y=340)
-
 
     #Email Entry
     signup_email_label = Label(signup_frame, text="Email", fg="black", bg="#f8c81c", font=("Helvetica", 10))
@@ -337,9 +334,8 @@ def signup_window_open(event=None):
 
     # Signup Confirm Password Entry
     signup_confirm_label = Label(signup_frame, text="Confirm Password", fg="black", bg="#f8c81c", font=("Helvetica", 10))
-    signup_confirm_label.place(x=33, y=210)
+    signup_confirm_label.place(x=33, y=209)
 
-    global signup_confirm_entry
     signup_confirm_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11))
     signup_confirm_entry.place(x=35, y=230)
     signup_confirm_entry.insert(0, "Password")
@@ -362,9 +358,9 @@ def signup_window_open(event=None):
     signup_gender_dropdown.place(x=33, y=266)
     Frame(signup_frame, width=190, height=1, bg="black").place(x=35, y=250)
 
-    #Image Reference
-    signup_image_label.image = signup_photo_image
-    signup_logo_image_label.image = signup_logo_photo_image
+    #Sign Up Button
+    signup_button = Button(signup_frame, width=20, pady=5, text="Sign Up", bg="white", fg="black", font=("Helvetica", 10), border=2, relief=RAISED, command=signup_clicked)
+    signup_button.place(x=90, y=340)
 
     # Privacy Policy and Terms of Use
     global terms_var
