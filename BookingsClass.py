@@ -5,6 +5,35 @@ from Vehicle_Classes import Car, Van, Motorcycle
 
 # Creation of User's Booking Information
 class Booking:
+    """
+    A class to represent a user's booking information.
+
+    Attributes:
+        user (str): The name of the user making the booking.
+        pickup_location (str): The address where the pickup is scheduled.
+        dropoff_location (str): The address where the dropoff is scheduled.
+        date_and_time (str): The date and time of the booking.
+        pax (int): The number of passengers for the booking.
+        vehicle (Vehicle): The vehicle assigned for the booking.
+        total_distance (float): The total distance to be traveled in the booking.
+        total_cost (float): The total cost calculated for the booking.
+        status (str): The current status of the booking (e.g., 'ongoing', 'completed').
+        no (int): The unique customer number associated with the booking.
+        booking_id (str): The unique identifier for the booking, generated using UUID.
+
+    Methods:
+        to_dict():
+            Converts the booking information into a dictionary format.
+        
+        save_to_file(booking, filename):
+            Saves the booking information to a JSON file.
+        
+        delete_file(filename):
+            Deletes the specified booking file.
+        
+        from_dict(data):
+            Creates a Booking object from a dictionary of booking data.
+    """
     _customer_no = 1
 
     def __init__(self, user, pickup_location, dropoff_location, date_and_time, pax, vehicle, total_distance, total_cost, status, number=None, booking_id=None):
