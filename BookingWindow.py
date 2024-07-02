@@ -22,7 +22,7 @@ def booking_window_open():
     api_key = "AIzaSyDVMXyo9XYUdOBjr9Kv0TLbpQiDVv2lds0" 
 
     def get_distance(pickup_location, dropoff_location, api_key):
-        #Get the estimated distance travelled based on common routes.
+        #Calculates the estimated distance travelled based on common routes.
         url = "https://maps.googleapis.com/maps/api/distancematrix/json"
         params = {
             "origins": pickup_location,
@@ -46,6 +46,12 @@ def booking_window_open():
         with open("Accounts.json", "r") as file:
             data = json.load(file)
         return data["current_user"]
+    
+    def on_closing(event):
+        #Saves booking data even if the application is closed. 
+        #Ensures data retention.
+        booking_window.save_bookings(booking_window)
+        booking_window.destroy()
 
 # ---------------------------------------------------------------------------- #
 #                         FUNCTIONS FOR SWITCHING TABS                         #
@@ -60,6 +66,7 @@ def booking_window_open():
         notebook.select(booking_tab)
 
     def switch_to_booking_successful_tab():
+        notebook.select(booking_successful_tab)
 
     def switch_to_bookings_list_tab():
         #Switches to booking lists tab.
@@ -84,24 +91,6 @@ def booking_window_open():
         vehicle = Van()
         switch_to_booking_tab()
     
-    def book_now_button_clicked(event):
-        pickup_location = pickup_location_entry.get()
-        dropoff_location = dropoff_location_entry.get()
-        pax = pax_entry.get()
-
-        if not pickup_location or not dropoff_location or not pax:
-            messagebox.showerror("Error", "Please fill in all fields.")
-            return
-
-        try:
-            pax_int = int(pax)
-            if pax_int <= 0 or pax_int > passenger_limit:
-                messagebox.showerror("Error", f"Pax must be between 1 and {passenger_limit}.")
-                return
-        except ValueError:
-            messagebox.showerror("Error", "Pax must be a valid integer.")
-            return
-        
     def go_back_to_home_page_button_clicked(event):
         switch_to_home_tab()
         #####################gamitin to para sa button ng 3rd tab pati na rin dun sa gilid na icon############
@@ -120,23 +109,54 @@ def booking_window_open():
 #                       FUNCTIONS FOR VALIDATION OF INPUS                      #
 # ---------------------------------------------------------------------------- #
 
-    def validate_pickup_location():
-        #Validates the pick-up address if it exists.
+    def is_address_valid(address):
+        #Check if the given address is valid according to Google Maps Geocoding API.
+        endpoint = 'https://maps.googleapis.com/maps/api/geocode/json'
+        params = {
+            'address': address,
+            'key': api_key,
+        }
+        response = requests.get(endpoint, params=params)
+        if response.status_code == 200:
+            data = response.json()
+            if data['status'] == 'OK':
+                return True
+            else:
+                return False
+        else:
+            print(f"Error: {response.status_code}")
+            return False
 
-    def validate_dropoff_location():
-        #Validates the drop off address if it exists.
+    def validate_pickup_address(pickup_address_entry):
+        #Validate the pickup address if it really exsists.
+        pickup_address = pickup_address_entry.get().strip()
+        if not pickup_address:
+            return False, "Please enter a pickup address."      
+        elif not is_address_valid(pickup_address):
+            return False, "Pickup address not found or invalid."
+        else:
+            return True
+
+    def validate_dropoff_address(dropoff_address_entry):
+        #Validates the dropoff address if it really exists.
+        dropoff_address = dropoff_address_entry.get().strip()
+        if not dropoff_address:
+            return False, "Please enter a dropoff address."
+        elif not is_address_valid(dropoff_address):
+            return False, "Dropoff address not found or invalid."
+        else:
+            return True
 
     def validate_passenger_amount(passengers):
         # Validates if pax entered is less than or equal the capacity of selected vehicle.
+
         try:
             passenger_count = int(passengers)
         except ValueError:
-            messagebox.showerror("Error", "Passenger count should be a numeric value.", parent=booking_window)
-            return
+            return False, "Passenger count should be a numeric value."
 
         if passenger_count <= 0:
-            messagebox.showerror("Error", "Passenger count should be a positive integer.", parent=booking_window)
-            return
+            return False, "Passenger count should be a positive integer."
 
         #Car's recommended capacity is 4, allow up to 6 passengers only.
         if isinstance(vehicle, Car) and 4 < passenger_count <= 6:
@@ -150,19 +170,18 @@ def booking_window_open():
 
         #Error if passenger amount is greater than vehicle capacity.
         elif passenger_count > vehicle.capacity:
-            messagebox.showerror("Error", "The selected vehicle does not have enough capacity for the number of passengers.", parent=booking_window)
-            return
-
+            return "The selected vehicle does not have enough capacity for the number of passengers."
+    
+        return
 
 # ---------------------------------------------------------------------------- #
 #                             FUNCTIONS FOR BOOKING                            #
 # ---------------------------------------------------------------------------- #
 
-
     def book_now(username, pickup, dropoff, date_and_time, pax, vehicle_type, total_distance, total_cost, status):
         #validates booking information and creates a new booking if valid.
-        valid_pickup_location, pickup_msg = validate_pickup_location(pickup)
-        valid_dropoff_location, dropoff_msg = validate_dropoff_location(dropoff)
+        valid_pickup_location, pickup_msg = validate_pickup_address(pickup)
+        valid_dropoff_location, dropoff_msg = validate_dropoff_address(dropoff)
         valid_passenger_amount, pax_msg = validate_passenger_amount(pax)
 
         if not valid_pickup_location:
@@ -174,14 +193,29 @@ def booking_window_open():
             return False
             
         elif not valid_passenger_amount:
-            messagebox.showerror("Invalid Passenger Amount.", pax_msg, parent=booking_window)
+            messagebox.showerror("Invalid Passenger Amount", dropoff_msg, parent=booking_window)
             return False
             
         else:
-            Booking(username, pickup, dropoff, date_and_time, vehicle_type, pax, total_distance, total_cost, status)
+            booking = Booking(username, pickup, dropoff, date_and_time, vehicle_type, pax, total_distance, total_cost, status)
             Booking.to_dict()
 
-    def book_button_clicked():
+         
+
+                # Insert the booking in the list.
+####################################PALITAN TO SYEMPRE#####################################
+            self.listbox.insert(tk.END, f"Booking #{booking.no}: {user}")
+            Booking.save_to_file(booking, f"booking_{booking.no}.json")
+
+            booking.list
+
+        # Create a booking.
+            booking = Booking(user, vehicle, start_location, end_location, km)
+            self.bookings[booking.no] = booking
+####################################################################################
+        
+
+    def book_button_clicked(event):
         #Retrieves booking information from entry fields and calls the book_now function.
         username = load_current_user()
         pickup = pickup_user_entry.get()
@@ -191,35 +225,24 @@ def booking_window_open():
         pax = pax_user_entry.get()
         total_distance = get_distance(pickup_user_entry.get(), dropoff_user_entry.get(), api_key )
         total_cost = vehicle.calculate_cost(int(total_distance))
-        status = "ongoing"
+        status = "Ongoing"
 
         book_now(username, pickup, dropoff, date_and_time, pax, vehicle_type, total_distance, total_cost, status)
         
-        # VALIDATION OF INPUTS
-
-        # Validate if all fields are filled.
-        if not user or not start_location or not end_location or not passengers:
-            messagebox.showerror("Error", "All fields must be filled.")
-            return
-
-        # Calculation of distance between two points using Google Maps API.
-        try:
-            # Calculate the distance
-            km = Booking.get_distance(start_location, end_location, self.api_key)
-            self.distance_entry.config(state='normal')
-            self.distance_entry.delete(0, tk.END)
-            self.distance_entry.insert(0, km)
-            self.distance_entry.config(state='readonly')
-        except Exception as e:
-            messagebox.showerror("Error", "Invalid address or location.")
-            return
-
+    def add_booking_to_treeview(self, booking_data):
+        #Adds booking data to the treeview in a new row.
+        self.treeview.insert("", "end", values=(
+            booking_data["username"], booking_data["pickup"], booking_data["dropoff"], booking_data["date_and_time"],
+            booking_data["vehicle_type"], booking_data["pax"], booking_data["total_distance"], booking_data["total_cost"],
+            booking_data["status"]
+        ))
+        
 # ---------------------------------------------------------------------------- #
-#                 FUNCTIONS FOR CANCEL, SAVE, AND LOAD BOOKINGS                #
+#        FUNCTIONS FOR CANCEL, SAVE, AND LOAD BOOKINGS IN A FILE               #
 # ---------------------------------------------------------------------------- #
-
-    # Widget for cancel Booking
+#################################PALITAN LAHAT TO SYEMPREEEEEEEEEEEEEEEEEEEE#########################
     def cancel_booking(self):
+        
         selected = self.listbox.curselection()
         if selected:
             booking_id = int(self.listbox.get(selected).split(':')[0].split('#')[1])
@@ -241,10 +264,6 @@ def booking_window_open():
                 booking = Booking.from_dict(booking_data)
                 self.bookings[booking.no] = booking
                 self.listbox.insert(tk.END, f"Booking #{booking.no}: {booking.user}")
-
-    def on_closing(self):
-        booking_window.save_bookings(booking_window)
-        booking_window.destroy()
 
 # ---------------------------------------------------------------------------- #
 #                                   FRONTEND                                   #
