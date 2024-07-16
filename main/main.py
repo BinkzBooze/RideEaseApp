@@ -12,15 +12,95 @@ menu_bar_color = "#ffb700"
 history_bg_color = "#ffec9e"
 
 main = Tk()
-main.geometry("800x580")
+main.geometry("800x580+0+0")
 main.title("RideSafe")
 main.configure(bg=main_page_color)
 
-def report_issue_clicked():
-    return
+# Mode to indicate which tab (0 for Home, 1 for Booking, 2 for Profile, 3 for Activity)
+global_mode_int = 0 # Indicates its in Home Tab
+
+# Button Indicator Function
+def btn_modes(ind_lb, mode_int):
+    global home_name, booking_name, profile_name, activity_name
+
+    # Changes all the menu icons to orange then changes the ind_lb to white
+    home_btn_ind.config(bg=menu_bar_color)
+    booking_btn_ind.config(bg=menu_bar_color)
+    profile_btn_ind.config(bg=menu_bar_color)
+    activity_btn_ind.config(bg=menu_bar_color)
+
+    ind_lb.config(bg="white")
+
+    if ind_lb == home_btn_ind:
+        mode_int = 0
+        print ("Home Tab")
+
+    elif ind_lb == booking_btn_ind:
+        mode_int = 1
+        print ("Booking Tab")
+
+    elif ind_lb == profile_btn_ind:
+        mode_int = 2
+        print ("Profile Tab")
+
+    elif ind_lb == activity_btn_ind:
+        mode_int = 3
+        print ("Activity Tab")
+
+    global global_mode_int
+    global_mode_int = mode_int
+
+# Initialize Toggle Button as default(off)
+is_on = False
+
+# Toggle Icon Function
+def toggle():
+
+    # All these global variables just shows functionality on toggle
+    global is_on, home_name, booking_name, profile_name, activity_name, global_mode_int
+    is_on = not is_on
+
+    # Toggles to toggle_close_icon and toggle_menu_btn
+    if is_on:
+        menu_bar_frame.configure(width=250)
+        menu_bar_frame.tkraise()
+        toggle_menu_btn.configure(image=close_icon)
+        toggle_menu_btn.place(x=5, y=14)
+
+        # Shows extended names for the icons (2)
+        home_name = Button(main, text="HOME", bg=menu_bar_color, fg="black", bd=0, 
+                            highlightthickness=0, font=("Helvetica", 20, "bold"),
+                            activebackground=menu_bar_color, 
+                            command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0), homepage_clicked()))
+        booking_name = Button(main, text="BOOKING", bg=menu_bar_color, fg="black", bd=0, 
+                                highlightthickness=0, font=("Helvetica", 20, "bold"),
+                                activebackground=menu_bar_color,
+                                command=lambda: (btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
+        profile_name = Button(main, text="PROFILE", bg=menu_bar_color, fg="black", bd=0, 
+                                highlightthickness=0, font=("Helvetica", 20, "bold"),
+                                activebackground=menu_bar_color,
+                                command=lambda: (btn_modes(profile_btn_ind, mode_int=2), profile_clicked()))
+        activity_name = Button(main, text="ACTIVITY", bg=menu_bar_color, fg="black", bd=0, 
+                                highlightthickness=0, font=("Helvetica", 20, "bold"),
+                                activebackground=menu_bar_color,
+                                command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
+        home_name.place(x=70, y=130)
+        booking_name.place(x=70, y=190)
+        profile_name.place(x=70, y=250)
+        activity_name.place(x=70, y=310)
+
+    else:
+        menu_bar_frame.configure(width=50)
+        toggle_menu_btn.configure(image=toggle_icon)
+        toggle_menu_btn.place(x=4, y=10)
+
+        # Deletes the icon names
+        home_name.place_forget()
+        booking_name.place_forget()
+        profile_name.place_forget()
+        activity_name.place_forget()
 
 def clear_main():
-    main.geometry("800x580")
     main.configure(bg=main_page_color)
     icon_main.place(x=x_position, y=y_position)
 
@@ -87,7 +167,7 @@ def profile_clicked():
 def activity_clicked():
     clear_main()
 
-    act_treeview.place(x=100, y=220)
+    act_treeview.place(x=80, y=200)
 
 def load_image(path):
     if os.path.exists(path):
@@ -95,101 +175,6 @@ def load_image(path):
     else:
         print(f"File not found: {path}")
         return None
-
-# Icons (Logo, Menu Toggle, Home, Booking, Profile, Activity, Close)
-icon_path = "homepage_icon.png"
-icon = Image.open(icon_path).convert("RGBA")
-
-toggle_icon_path = "images/toggle_btn_icon.png"
-toggle_icon = load_image(toggle_icon_path)
-
-home_icon_path = "images/home_icon.png"
-home_icon = load_image(home_icon_path)
-
-booking_path = "images/booking_icon.png"
-booking_icon = load_image(booking_path)
-
-profile_path = "images/profile_icon.png"
-profile_icon = load_image(profile_path)
-
-activity_path = "images/activity_icon.png"
-activity_icon = load_image(activity_path)
-
-close_path = "images/close_btn_icon.png"
-close_icon = load_image(close_path)
-
-car_icon_path = "images/car.png"
-car_icon = load_image(car_icon_path)
-
-motorcycle_path = "images/motorcycle.png"
-motorcycle_icon = load_image(motorcycle_path)
-
-car2_path = "images/car(2).png"
-car2_icon = load_image(car2_path)
-
-van_path = "images/van.png"
-van_icon = load_image(van_path)
-
-filler_icon = car_icon
-
-# Initialize Toggle Button as default(off)
-is_on = False
-
-# Menu Bar Config
-menu_bar_frame = Frame(main, bg=menu_bar_color, padx=3, pady=4)
-
-# Home Button (Placed in Menu Bar)
-home_btn = Button(menu_bar_frame, image=home_icon, bg=menu_bar_color,
-                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0), homepage_clicked()))
-home_btn.place(x=8, y=130, width=30, height=40)
-
-# Home Button Indicator
-home_btn_ind = Label(menu_bar_frame, bg="white")
-home_btn_ind.place(x=1, y=130, width=3, height=40)
-
-# Booking Button (Placed in Menu Bar)
-booking_btn = Button(menu_bar_frame, image=booking_icon, bg=menu_bar_color,
-                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
-booking_btn.place(x=8, y=190, width=30, height=40)
-
-# Booking Button Indicator
-booking_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
-booking_btn_ind.place(x=1, y=190, width=3, height=40)
-
-# Profile Button (Placed in Menu Bar)
-profile_btn = Button(menu_bar_frame, image=profile_icon, bg=menu_bar_color,
-                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(profile_btn_ind, mode_int=2), profile_clicked()))
-profile_btn.place(x=8, y=250, width=30, height=40)
-
-# Profile Button Indicator
-profile_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
-profile_btn_ind.place(x=1, y=250, width=3, height=40)
-
-# Activity Button (Placed in Menu Bar)
-activity_btn = Button(menu_bar_frame, image=activity_icon, bg=menu_bar_color,
-                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
-activity_btn.place(x=8, y=310, width=30, height=40)
-
-# Activity Button Indicator
-activity_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
-activity_btn_ind.place(x=1, y=310, width=3, height=40)
-
-# Resize Icon
-resize_icon = icon.resize((500, 136), Image.LANCZOS)
-tk_icon = ImageTk.PhotoImage(resize_icon)
-
-# Icon Placement
-window_width = 800
-window_height = 580
-icon_width = resize_icon.width
-icon_height = resize_icon.height
-
-x_position = (window_width - icon_width) // 2
-x_position = x_position + 30
-y_position = 30
-
-icon_main = Label(main, image=tk_icon, borderwidth=0, highlightthickness=0, bg=main_page_color)
-icon_main.place(x=x_position, y=y_position)
 
 home_tab_append = []
 
@@ -214,7 +199,7 @@ def home_tab():
         van_info.configure(bg=menu_bar_color)
 
     def vehicle_clicked(mode):
-        print(mode)
+        print("Mode =", mode)
         clear_color_hometab()
         highlight_color = "#FFE8C8"
         if mode == 0:
@@ -251,7 +236,8 @@ def home_tab():
     motorcycle_info = Label(main, text="Recommended Pax: 1\nPassenger Limit: 1", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
     motorcycle_info.place(x=92, y=385)
     container1_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
-                            command=lambda: vehicle_clicked(0))
+                            command=lambda: (vehicle_clicked(0), btn_modes(booking_btn_ind, mode_int=1), booking_clicked(),
+                                            ))
     container1_btn.place(x=97, y=460)
 
     home_lbl_container2 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
@@ -263,7 +249,7 @@ def home_tab():
     car_info = Label(main, text="Recommended Pax: 2-4\nPassenger Limit: 6", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
     car_info.place(x=336, y=385)
     container2_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
-                            command=lambda: vehicle_clicked(1))
+                            command=lambda: (vehicle_clicked(1), btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
     container2_btn.place(x=345, y=460)
 
     home_lbl_container3 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
@@ -275,7 +261,7 @@ def home_tab():
     van_info = Label(main, text="Recommended Pax: 5-10\nPassenger Limit: 12", font=("Helvetica", 11, "bold"), bg=menu_bar_color)
     van_info.place(x=590, y=385)
     container3_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
-                            command=lambda: vehicle_clicked(2))
+                            command=lambda: (vehicle_clicked(2), btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
     container3_btn.place(x=595, y=460)
 
     home_tab_append.extend([
@@ -296,6 +282,106 @@ def home_tab():
     van_name
     ])
 
+# Icons (Logo, Menu Toggle, Home, Booking, Profile, Activity, Close)
+icon_path = "homepage_icon.png"
+icon = Image.open(icon_path).convert("RGBA")
+
+toggle_icon_path = "images/toggle_btn_icon.png"
+toggle_icon = load_image(toggle_icon_path)
+
+home_icon_path = "images/home_icon.png"
+home_icon = load_image(home_icon_path)
+
+booking_path = "images/booking_icon.png"
+booking_icon = load_image(booking_path)
+
+profile_path = "images/profile_icon.png"
+profile_icon = load_image(profile_path)
+
+activity_path = "images/activity_icon.png"
+activity_icon = load_image(activity_path)
+
+close_path = "images/close_btn_icon.png"
+close_icon = load_image(close_path)
+
+motorcycle_path = "images/motorcycle.png"
+motorcycle_icon = load_image(motorcycle_path)
+
+car2_path = "images/car(2).png"
+car2_icon = load_image(car2_path)
+
+van_path = "images/van.png"
+van_icon = load_image(van_path)
+
+# Menu Bar Config
+menu_bar_frame = Frame(main, bg=menu_bar_color, padx=3, pady=4)
+
+# Menu Bar Placement
+menu_bar_frame.pack(side=LEFT, fill=Y)
+menu_bar_frame.pack_propagate(False)
+menu_bar_frame.configure(width=50)
+
+# Toggle Icon Button and Packing (Placed in Menu Bar)
+toggle_menu_btn = Button(menu_bar_frame, image=toggle_icon, bg=menu_bar_color,
+                        bd=0, activebackground=menu_bar_color, command=toggle)
+toggle_menu_btn.place(x=4, y=10)
+
+# Home Button (Placed in Menu Bar)
+home_btn = Button(menu_bar_frame, image=home_icon, bg=menu_bar_color,
+                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0),
+                        homepage_clicked()))
+home_btn.place(x=8, y=130, width=30, height=40)
+
+# Home Button Indicator
+home_btn_ind = Label(menu_bar_frame, bg="white")
+home_btn_ind.place(x=1, y=130, width=3, height=40)
+
+# Booking Button (Placed in Menu Bar)
+booking_btn = Button(menu_bar_frame, image=booking_icon, bg=menu_bar_color,
+                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(booking_btn_ind, mode_int=1),
+                       booking_clicked()))
+booking_btn.place(x=8, y=190, width=30, height=40)
+
+# Booking Button Indicator
+booking_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
+booking_btn_ind.place(x=1, y=190, width=3, height=40)
+
+# Profile Button (Placed in Menu Bar)
+profile_btn = Button(menu_bar_frame, image=profile_icon, bg=menu_bar_color,
+                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(profile_btn_ind, mode_int=2),
+                        profile_clicked()))
+profile_btn.place(x=8, y=250, width=30, height=40)
+
+# Profile Button Indicator
+profile_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
+profile_btn_ind.place(x=1, y=250, width=3, height=40)
+
+# Activity Button (Placed in Menu Bar)
+activity_btn = Button(menu_bar_frame, image=activity_icon, bg=menu_bar_color,
+                        bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(activity_btn_ind, mode_int=3),
+                        activity_clicked()))
+activity_btn.place(x=8, y=310, width=30, height=40)
+
+# Activity Button Indicator
+activity_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
+activity_btn_ind.place(x=1, y=310, width=3, height=40)
+
+# Resize Icon
+resize_icon = icon.resize((500, 136), Image.LANCZOS)
+tk_icon = ImageTk.PhotoImage(resize_icon)
+
+# Icon Placement
+window_width = 800
+window_height = 580
+icon_width = resize_icon.width
+icon_height = resize_icon.height
+
+x_position = (window_width - icon_width) // 2
+x_position = x_position + 30
+y_position = 30
+
+icon_main = Label(main, image=tk_icon, borderwidth=0, highlightthickness=0, bg=main_page_color)
+icon_main.place(x=x_position, y=y_position)
 # Home Tab
 home_tab()
 
@@ -323,7 +409,8 @@ pax_e = Entry(main, width=35)
 
 # Book Button
 booking_book_btn = Button(main, text="Book", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 12),
-                          bd=0, activebackground=menu_bar_color, padx=85, pady=5)
+                          bd=0, activebackground=menu_bar_color, padx=85, pady=5, 
+                          command=lambda: (btn_modes(ind_lb=profile_btn_ind, mode_int=2), profile_clicked()))
 
 # Profile
 profile_tab_lb = Label(main, text="Booking Successful!", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 25))
@@ -333,106 +420,29 @@ del_acc_btn = Button(main, text="View All Bookings", fg=main_page_color, bg=menu
                      activebackground=menu_bar_color, command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
 
 # Activity
-act_treeview = Treeview(main)
-act_treeview["columns"] = ("Name", "ID", "Favorite Pizza")
-act_treeview.column("#0", width=120, minwidth=25)
-act_treeview.column("Name", anchor=W, width=120)
-act_treeview.column("ID", anchor=CENTER, width=80)
-act_treeview.column("Favorite Pizza", anchor=W, width=120)
+act_treeview = Treeview(main, height=15)
+act_treeview["columns"] = ("Username", "Email", "Date", "Time", "Pick Up", "Drop off", "Ride Status")
 
-act_treeview.heading("#0", text="Label")
+act_treeview.column("#0", width=0, stretch=NO)
+act_treeview.column("Username", anchor=W, width=120)
+act_treeview.column("Email", anchor=W, width=120)
+act_treeview.column("Date", anchor=W, width=60)
+act_treeview.column("Time", anchor=W, width=60)
+act_treeview.column("Pick Up", anchor=W, width=120)
+act_treeview.column("Drop off", anchor=W, width=120)
+act_treeview.column("Ride Status", anchor=W, width=80)
 
-# Mode to indicate which tab (0 for Home, 1 for Booking, 2 for Profile, 3 for Activity)
-global_mode_int = 3 # Indicates its in Home Tab
+act_treeview.heading("#0", text="", anchor=W)
+act_treeview.heading("Username", text="Username", anchor=W)
+act_treeview.heading("Email", text="Email", anchor=W)
+act_treeview.heading("Date", text="Date", anchor=W)
+act_treeview.heading("Time", text="Time", anchor=W)
+act_treeview.heading("Pick Up", text="Pick Up", anchor=W)
+act_treeview.heading("Drop off", text="Drop off", anchor=W)
+act_treeview.heading("Ride Status", text="Ride Status", anchor=W)
 
-# Button Indicator Function
-def btn_modes(ind_lb, mode_int):
-    global home_name, booking_name, profile_name, activity_name
-
-    # Changes all the menu icons to orange then changes the ind_lb to white
-    home_btn_ind.config(bg=menu_bar_color)
-    booking_btn_ind.config(bg=menu_bar_color)
-    profile_btn_ind.config(bg=menu_bar_color)
-    activity_btn_ind.config(bg=menu_bar_color)
-
-    ind_lb.config(bg="white")
-
-    if ind_lb == home_btn_ind:
-        mode_int = 0
-        print ("Home Tab")
-
-    elif ind_lb == booking_btn_ind:
-        mode_int = 1
-        print ("Booking Tab")
-
-    elif ind_lb == profile_btn_ind:
-        mode_int = 2
-        print ("Profile Tab")
-
-    elif ind_lb == activity_btn_ind:
-        mode_int = 3
-        print ("Activity Tab")
-
-    global global_mode_int
-    global_mode_int = mode_int
-    print(global_mode_int)
-
-# Menu Bar Placement
-menu_bar_frame.pack(side=LEFT, fill=Y)
-menu_bar_frame.pack_propagate(False)
-menu_bar_frame.configure(width=50)
-
-# Toggle Icon Function
-def toggle():
-
-    # All these global variables just shows functionality on toggle
-    global is_on, extended_menu, home_name, booking_name, profile_name, activity_name, global_mode_int
-    is_on = not is_on
-
-    # Toggles to toggle_close_icon and toggle_menu_btn
-    if is_on:
-
-        toggle_menu_btn.config(image=close_icon)
-        toggle_menu_btn.place(x=8, y=15)
-        extended_menu = Label(main, bg=menu_bar_color, padx=100, pady=580)
-        extended_menu.place(x=50, y=0)
-
-        # Shows extended names for the icons (2)
-        home_name = Button(main, text="HOME", bg=menu_bar_color, fg="black", bd=0, 
-                            highlightthickness=0, font=("Helvetica", 20, "bold"),
-                            activebackground=menu_bar_color, 
-                            command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0), homepage_clicked()))
-        booking_name = Button(main, text="BOOKING", bg=menu_bar_color, fg="black", bd=0, 
-                                highlightthickness=0, font=("Helvetica", 20, "bold"),
-                                activebackground=menu_bar_color,
-                                command=lambda: (btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
-        profile_name = Button(main, text="PROFILE", bg=menu_bar_color, fg="black", bd=0, 
-                                highlightthickness=0, font=("Helvetica", 20, "bold"),
-                                activebackground=menu_bar_color,
-                                command=lambda: (btn_modes(profile_btn_ind, mode_int=2), profile_clicked()))
-        activity_name = Button(main, text="ACTIVITY", bg=menu_bar_color, fg="black", bd=0, 
-                                highlightthickness=0, font=("Helvetica", 20, "bold"),
-                                activebackground=menu_bar_color,
-                                command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
-        home_name.place(x=70, y=130)
-        booking_name.place(x=70, y=190)
-        profile_name.place(x=70, y=250)
-        activity_name.place(x=70, y=310)
-
-    else:
-        toggle_menu_btn.config(image=toggle_icon)
-        toggle_menu_btn.place(x=4, y=10)
-        extended_menu.after(1, extended_menu.destroy())
-
-        # Deletes the icon names
-        home_name.after(1, home_name.destroy())
-        booking_name.after(1, booking_name.destroy())
-        profile_name.after(1, profile_name.destroy())
-        activity_name.after(1, activity_name.destroy())
-
-# Toggle Icon Button and Packing (Placed in Menu Bar)
-toggle_menu_btn = Button(menu_bar_frame, image=toggle_icon, bg=menu_bar_color,
-                        bd=0, activebackground=menu_bar_color, command=toggle)
-toggle_menu_btn.place(x=4, y=10)
+# Insert sample data
+act_treeview.insert(parent="", index="end", iid=0, text="",
+                    values=("John", "john@example.com", "07/16", "21:00", "Manila", "Alabang", "Completed"))
 
 main.mainloop()
