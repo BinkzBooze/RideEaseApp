@@ -1,9 +1,16 @@
+#Please install the following first to ensure all details will show accordingly.
+    #1. pip install pillow
+    #2. pip install tkinter 
+    #3. pip install tkintermapview
+    #4. pip install requests
+
+import sqlite3
 from tkinter import *
 from tkinter import messagebox
-import os 
-import json
+from tkintermapview import *
 from PIL import Image, ImageTk
 from SignUpWindow import signup_window_open
+from Frontend import main_window
 
 def login_window_open():
     """Initialize and display the login window"""
@@ -12,71 +19,79 @@ def login_window_open():
 #                                    BACKEND                                   #
 # ---------------------------------------------------------------------------- #
 
-    accounts = "Accounts.json"
+    def connect_db():
+            # Connect to SQLite database
+            conn = sqlite3.connect('Accounts.db')
+            cursor = conn.cursor()
+            # Create table if it doesn't exist
+            cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                                username TEXT PRIMARY KEY,
+                                password TEXT NOT NULL,
+                                email TEXT NOT NULL
+                            )''')
+            conn.commit()
+            return conn
+    
+    def login_clicked():
+        conn = connect_db()
+        cursor = conn.cursor()
 
-    def login(login_username, login_password, accounts):
-        #Authenticate the user with the provided username and password.
+        username = login_username_entry.get()
+        password = login_password_entry.get()
 
-        users = load_users_from_file(accounts)
-        if login_username in users:
-            # Access the password from the nested object
-            stored_password = users[login_username].get("password", "")
-            if login_password == stored_password:
-                messagebox.showinfo("Login Successful", "Welcome, " + login_username + "!")
-                print(f"User '{login_username}' logged in successfully!")
+        # Check if the username exists
+        find_user = "SELECT * FROM users WHERE username = ?"
+        cursor.execute(find_user, [username])
+        account_username = cursor.fetchone()
+        
+        if account_username:
+            # Check if the password matches
+            find_password = "SELECT * FROM users WHERE username = ? AND password = ?"
+            cursor.execute(find_password, [(username), (password)])
+            account = cursor.fetchone()
+            
+            if account:
+                messagebox.showinfo("Login Successful", "Welcome, " + login_username_entry.get() + "!")
                 login_window.destroy()
-                # booking_window_open()  # Uncomment this when you define the function
+                main_window()
             else:
-                messagebox.showerror("Login Failed", "Invalid password.")
-                print(f"Login failed for user '{login_username}': Incorrect password.")
+                messagebox.showerror("Login Failed", "Incorrect password.")
+                print(f"Login failed for user '{login_username_entry.get()}': Incorrect password.")
         else:
-            messagebox.showerror("Login Failed", "Username does not exist.")
-            print(f"Login failed: Username '{login_username}' not found.")
+            messagebox.showerror("Login Failed", "Username not found.")
+            print(f"Login failed: Username '{login_username_entry.get()}' not found.")
 
-    def load_users_from_file(accounts):
-        #Load user accounts from a JSON file
-
-        if os.path.exists(accounts):
-            with open(accounts, "r") as file:
-                return json.load(file)
-        else:
-            return {}
+        conn.close()    
 
     def toggle_password_visibility():
         #Toggle the visibility of the password entry field.
 
         if show_password_var.get():
-            login_password.config(show="")
+            login_password_entry.config(show="")
         else:
-            login_password.config(show="*")
+            login_password_entry.config(show="*")
 
     def username_focus(event):
         #Clear the placeholder text in the username entry field when it gains focus.
-        if user.get() == "Username":
-            user.delete(0, END)
+        if login_username_entry.get() == "Username":
+            login_username_entry.delete(0, END)
 
     def password_focus(event):
         #Clear the placeholder text in the password entry field and mask input when it gains focus.
-        if login_password.get() == "Password":
-            login_password.delete(0, END)
-            login_password.config(show="*")
+        if login_password_entry.get() == "Password":
+            login_password_entry.delete(0, END)
+            login_password_entry.config(show="*")
     
     def username_blur(event):
         #Restore the placeholder text in the username entry field if it is empty when losing focus.
-        if user.get() == "":
-            user.insert(0, "Username")
+        if login_username_entry.get() == "":
+            login_username_entry.insert(0, "Username")
 
     def password_blur(event):
         #Restore the placeholder text in the password entry field and unmask input if it is empty when losing focus.
-        if login_password.get() == "":
-            login_password.insert(0, "Password")
-            login_password.config(show="")
-    
-    def login_clicked():
-        #Retrieves the username and password from the entry fields and calls the login function.
-        username = user.get()
-        passwd = login_password.get()
-        login(username, passwd, accounts)
+        if login_password_entry.get() == "":
+            login_password_entry.insert(0, "Password")
+            login_password_entry.config(show="")
 
     def on_enter(event):
         #Change Color of signup button on Hover.
@@ -101,6 +116,10 @@ def login_window_open():
     login_window.configure(bg="white")
     login_window.resizable(False, False)
     login_window.iconbitmap("icons/RideEaseLogo.ico") 
+
+    #Login Text variables
+    username = StringVar()
+    password = StringVar()
 
     #Logo Image
     login_logo_image_path = "images/welcome_new.png" 
@@ -132,26 +151,26 @@ def login_window_open():
     login_username_label.place(x=72, y=80)
 
     #Username Entry
-    user = Entry(login_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11))
-    user.place(x=75,y=105)
-    user.insert(0, "Username")
+    login_username_entry = Entry(login_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11), textvariable=username)
+    login_username_entry.place(x=75,y=105)
+    login_username_entry.insert(0, "Username")
     Frame(login_frame, width=202, height=1, bg="black").place(x=75,y=125)
 
-    user.bind("<FocusIn>", username_focus)
-    user.bind("<FocusOut>", username_blur)
+    login_username_entry.bind("<FocusIn>", username_focus)
+    login_username_entry.bind("<FocusOut>", username_blur)
 
     #Login Password Label
     login_password_label = Label(login_frame, text="Enter your password", fg="black", bg="#f8c81c", font=("Helvetica", 10))
     login_password_label.place(x=72, y=135)
 
     #Login Password Entry
-    login_password = Entry(login_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11))
-    login_password.place(x=75,y=160)
-    login_password.insert(0, "Password")
+    login_password_entry = Entry(login_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11), textvariable=password)
+    login_password_entry.place(x=75,y=160)
+    login_password_entry.insert(0, "Password")
     Frame(login_frame, width=202, height=1, bg="black").place(x=75,y=180)
 
-    login_password.bind("<FocusIn>", password_focus)
-    login_password.bind("<FocusOut>", password_blur)
+    login_password_entry.bind("<FocusIn>", password_focus)
+    login_password_entry.bind("<FocusOut>", password_blur)
 
     #Login Show Password 
     show_password_var = BooleanVar()
