@@ -1,10 +1,9 @@
+import sqlite3
 from tkinter import *
 from tkinter import messagebox
 from PIL import Image, ImageTk
 import re
 import string
-import json
-import os
 from tkinter.scrolledtext import ScrolledText
 
 current_signup_window = None
@@ -19,17 +18,28 @@ def signup_window_open(event=None):
     global current_signup_window
     if current_signup_window is not None:
         return
+    
+    def connect_db():
+        # Connect to SQLite database
+        conn = sqlite3.connect('Accounts.db')
+        cursor = conn.cursor()
+        # Create table if it doesn't exist
+        cursor.execute('''CREATE TABLE IF NOT EXISTS users (
+                            username TEXT PRIMARY KEY,
+                            password TEXT NOT NULL,
+                            email TEXT NOT NULL
+                        )''')
+        conn.commit()
+        return conn
 
-    accounts = "Accounts.json"
-
-    def signup(signup_username, signup_password, signup_email, signup_confirm, signup_gender, signup_terms, accounts):
+    def signup_clicked():
         #Validates signup information and creates a new user account if valid.
-        valid_email, email_msg = validate_email_signup(signup_email)
-        valid_username, username_msg = validate_username_signup(signup_username)
-        valid_password, password_msg = validate_password_signup(signup_password)
-        valid_confirm, confirm_msg = validate_confirmpw_signup(signup_confirm, signup_password)
-        valid_gender, gender_msg = gender_option_picked(signup_gender)
-        valid_terms, terms_msg = terms_and_conditions_checked(signup_terms)
+        valid_email, email_msg = validate_email_signup(signup_email_entry.get())
+        valid_username, username_msg = validate_username_signup(signup_user_entry.get())
+        valid_password, password_msg = validate_password_signup(signup_password_entry.get())
+        valid_confirm, confirm_msg = validate_confirmpw_signup(signup_confirm_entry.get(), signup_password_entry.get())
+        valid_gender, gender_msg = gender_option_picked(signup_gender_var.get())
+        valid_terms, terms_msg = terms_and_conditions_checked(terms_var.get())
 
         if not valid_email:
             messagebox.showerror("Invalid Email Address", email_msg, parent=current_signup_window)
@@ -50,60 +60,41 @@ def signup_window_open(event=None):
             messagebox.showerror("Agreement Required", terms_msg, parent=current_signup_window)
             return False
         else:
-            users[signup_username] = {
-                "password": signup_password,
-                "email": signup_email
-            }                       
-            save_users_to_file(users, accounts)  # Save user data to file
-            print(f"User '{signup_username}' signed up successfully!")
-            messagebox.showinfo("Signup Successful", "Account created successfully!", parent=current_signup_window)
-            current_signup_window.destroy()  # Close the signup window after signing up
+            username = signup_user_entry.get()
+            password = signup_password_entry.get()
+            email = signup_email_entry.get()
 
-    def signup_clicked():
-        #Retrieves signup information from entry fields and calls the signup function.
-        #Closes the signup window if signup is successful.
-        email = signup_email_entry.get()
-        username = signup_user_entry.get()
-        password = signup_password_entry.get()
-        confirm = signup_confirm_entry.get()
-        gender = signup_gender_var.get()
-        terms = terms_var.get()
-
-        signup(username, password, email, confirm, gender, terms, accounts)
-            
-    def load_users_from_file(accounts):
-    #Load user accounts from a JSON file
-
-        if os.path.exists(accounts):
-            with open(accounts, "r") as file:
-                return json.load(file)
-        else:
-            return {}
-    
-    users = load_users_from_file(accounts)
-
-    def save_users_to_file(users, accounts):
-            #Save user accounts to a JSON file.
-            with open(accounts, "w") as file:
-                json.dump(users, file)
+            conn = connect_db()
+            cursor = conn.cursor()
+            try:
+                cursor.execute("INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+                               (username, password, email))
+                conn.commit()
+                print(f"User '{username}' signed up successfully!")
+                messagebox.showinfo("Signup Successful", "Account created successfully!", parent=current_signup_window)
+                current_signup_window.destroy()  # Close the signup window after signing up
+            except sqlite3.IntegrityError:
+                messagebox.showerror("Username Taken", "This username is already taken. Please choose another.", parent=current_signup_window)
+            finally:
+                conn.close()
 
     def validate_username_signup(username):
         #Validates the username for signup.
-        if len(username) < 4 or len(username) > 20 or username == "Username":
+        if len(str(username)) < 4 or len(str(username)) > 20 or username == "Username":
             return False, "Username must be between 4 and 20 characters"
-        if not username.isalnum():
+        if not str(username).isalnum():
             return False, "Username can only contain alphanumeric characters"
         return True, ""
 
     def contains_alnum_and_special(s):
         #Check if a string contains both alphanumeric and special characters.
-        has_alnum = any(char.isalnum() for char in s)
-        has_special = any(char in string.punctuation for char in s)
+        has_alnum = any(char.isalnum() for char in str(s))
+        has_special = any(char in string.punctuation for char in str(s))
         return has_alnum and has_special
 
     def validate_password_signup(password):
         #Validates the password for signup.
-        if len(password) < 6 or len(password) > 30 or password == "Password":
+        if len(str(password)) < 6 or len(str(password)) > 30 or password == "Password":
             return False, "Password must be between 6 and 30 characters"
         result = contains_alnum_and_special(password)
         if not result:
@@ -113,7 +104,7 @@ def signup_window_open(event=None):
     def validate_email_signup(email):
         #Validates the email address for signup.
         pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
-        if re.match(pattern, email):
+        if re.match(pattern, str(email)):
             return True, ""
         else:
             return False, "Please enter a valid email address."
@@ -270,6 +261,12 @@ def signup_window_open(event=None):
     current_signup_window.bind("<Destroy>", lambda event: clear_current_signup_window())
     current_signup_window.lift()
 
+    #SignUp Variables
+    username = StringVar()
+    email = StringVar()
+    password = StringVar()
+    confirm_password = StringVar()
+
     #Signup Logo Image
     signup_logo_image_path = "images/welcome_new.png" 
     signup_logo_image = Image.open(signup_logo_image_path)
@@ -302,8 +299,7 @@ def signup_window_open(event=None):
     signup_email_label = Label(signup_frame, text="Email", fg="black", bg="#f8c81c", font=("Helvetica", 10))
     signup_email_label.place(x=33, y=73)
 
-    global signup_email_entry
-    signup_email_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11))
+    signup_email_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11), textvariable = email)
     signup_email_entry.place(x=35, y=95)
     signup_email_entry.insert(0, "Email Address")
     Frame(signup_frame, width=202, height=1, bg="black").place(x=35, y=115)
@@ -315,8 +311,7 @@ def signup_window_open(event=None):
     signup_username_label = Label(signup_frame, text="Username", fg="black", bg="#f8c81c", font=("Helvetica", 10))
     signup_username_label.place(x=33, y=117)
 
-    global signup_user_entry
-    signup_user_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11))
+    signup_user_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11), textvariable=username)
     signup_user_entry.place(x=35, y=140)
     signup_user_entry.insert(0, "Username")
     Frame(signup_frame, width=202, height=1, bg="black").place(x=35, y=160)
@@ -328,8 +323,7 @@ def signup_window_open(event=None):
     signup_password_label = Label(signup_frame, text="Create Password", fg="black", bg="#f8c81c", font=("Helvetica", 10))
     signup_password_label.place(x=33, y=163)
 
-    global signup_password_entry
-    signup_password_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11))
+    signup_password_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11), textvariable=password)
     signup_password_entry.place(x=35, y=185)
     signup_password_entry.insert(0, "Password")
     Frame(signup_frame, width=202, height=1, bg="black").place(x=35, y=205)
@@ -341,7 +335,7 @@ def signup_window_open(event=None):
     signup_confirm_label = Label(signup_frame, text="Confirm Password", fg="black", bg="#f8c81c", font=("Helvetica", 10))
     signup_confirm_label.place(x=33, y=209)
 
-    signup_confirm_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11))
+    signup_confirm_entry = Entry(signup_frame, width=25, fg="#0f0f0f", border=0, bg="white", font=("Helvetica", 11), textvariable=confirm_password)
     signup_confirm_entry.place(x=35, y=230)
     signup_confirm_entry.insert(0, "Password")
     Frame(signup_frame, width=202, height=1, bg="black").place(x=35, y=250)
@@ -354,7 +348,6 @@ def signup_window_open(event=None):
     signup_gender_label.place(x=33, y=243)
 
     gender_options = ["-- Select Your Gender --" , "Male", "Female", "Rather not say"]
-    global signup_gender_var
     signup_gender_var = StringVar(signup_frame)
     signup_gender_var.set(gender_options[0])  # set the default value
 
@@ -368,14 +361,11 @@ def signup_window_open(event=None):
     signup_button.place(x=90, y=340)
 
     # Privacy Policy and Terms of Use
-    global terms_var
     terms_var = BooleanVar()
-    global terms_check
     terms_check = Checkbutton(signup_frame, text="I agree to the", bg="#f8c81c", font=("Helvetica", 8), variable=terms_var, onvalue=True, offvalue=False)
     terms_check.place(x=20, y=310)
     terms_check.config(state=DISABLED)
 
-    global terms_label
     terms_label = Label(signup_frame, text="Privacy Policy and Terms of Use", fg="blue", font=("Helvetica", 8, "underline"), bg="#f8c81c", cursor="hand2")
     terms_label.place(x=90, y=312)
     terms_label.bind("<Enter>", on_terms_enter)
