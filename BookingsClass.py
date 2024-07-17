@@ -1,50 +1,18 @@
-import json
-import os
-import uuid
+import sqlite3
 from Vehicle_Classes import Car, Van, Motorcycle
 
 # Creation of User's Booking Information
 class Booking:
-    """
-    A class to represent a user's booking information.
+    booking_number = 1
 
-    Attributes:
-        user (str): The name of the user making the booking.
-        pickup_location (str): The address where the pickup is scheduled.
-        dropoff_location (str): The address where the dropoff is scheduled.
-        date_and_time (str): The date and time of the booking.
-        pax (int): The number of passengers for the booking.
-        vehicle (Vehicle): The vehicle assigned for the booking.
-        total_distance (float): The total distance to be traveled in the booking.
-        total_cost (float): The total cost calculated for the booking.
-        status (str): The current status of the booking (e.g., 'ongoing', 'completed').
-        no (int): The unique customer number associated with the booking.
-        booking_id (str): The unique identifier for the booking, generated using UUID.
-
-    Methods:
-        to_dict():
-            Converts the booking information into a dictionary format.
-        
-        save_to_file(booking, filename):
-            Saves the booking information to a JSON file.
-        
-        delete_file(filename):
-            Deletes the specified booking file.
-        
-        from_dict(data):
-            Creates a Booking object from a dictionary of booking data.
-    """
-    _customer_no = 1
-
-    def __init__(self, user, pickup_location, dropoff_location, date_and_time, pax, vehicle, total_distance, total_cost, status, number=None, booking_id=None):
+    def __init__(self, user, pickup_location, dropoff_location, date_and_time, pax, vehicle, total_distance, status, number=None):
         if number is not None:
-            self.no = number
-            Booking._customer_no = max(Booking._customer_no, number + 1)
+            self.booking_number = number
+            Booking.booking_number = max(Booking.booking_number, number + 1)
         else:
-            self.no = Booking._customer_no
-            Booking._customer_no += 1
+            self.booking_number = Booking.booking_number
+            Booking.booking_number+= 1
 
-        self.booking_id = booking_id if booking_id else str(uuid.uuid4())
         self.user = user
         self.pickup_location = pickup_location
         self.dropoff_location = dropoff_location
@@ -55,48 +23,69 @@ class Booking:
         self.total_cost = self.vehicle.calculate_cost(total_distance)
         self.status = status
 
-    def to_dict(self):
-        return {
-            'Date and Time': self.date_and_time,
-            'Customer No.': self.no,
-            'ID': self.booking_id,
-            'Name': self.user,
-            'Vehicle': type(self.vehicle).__name__,
-            'Pax': self.pax,
-            'Pick Up Address': self.pickup_location,
-            'Drop Off Address': self.dropoff_location,
-            'Distance Travelled': self.total_distance,
-            'Total Cost': self.total_cost,
-            'Status': self.status
-        }
-
     @staticmethod
-    def save_to_file(booking, filename):
-        with open(filename, 'w') as f:
-            f.write(json.dumps(booking.to_dict(), indent=4))
+    def save_to_db(self, db_filename):
+        conn = sqlite3.connect(db_filename)
+        cursor = conn.cursor()
+        cursor.execute('''CREATE TABLE IF NOT EXISTS bookings (
+            Booking_Number INTEGER PRIMARY KEY,
+            Username TEXT,
+            Pickup_Location TEXT,
+            Dropoff_Location TEXT,
+            Date_and_Time TEXT,
+            Pax INTEGER,
+            Vehicle_Type TEXT,
+            Total_Distance REAL,
+            Total_Cost REAL,
+            Status TEXT,
+        )''')
+        cursor.execute('''INSERT INTO bookings (
+            Booking_Number, Username, Pickup_Location, Dropoff_Location, Date_and_Time, Pax, Vehicle_Type, Total_Distance, Total_Cost, Status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',(
+            self.booking_number,
+            self.user,
+            self.pickup_location,
+            self.dropoff_location,
+            self.date_and_time,
+            self.pax,
+            self.vehicle.__class__.__name__,
+            self.total_distance,
+            self.total_cost,
+            self.status
+        ))
+        conn.commit()
+        conn.close()
 
-    @staticmethod
-    def delete_file(filename):
-        os.remove(filename)
+    def delete_from_db(self, booking_number, db_filename):
+        conn = sqlite3.connect(db_filename)
+        c = conn.cursor()
+        c.execute('DELETE FROM bookings WHERE booking_number = ?', (booking_number,))
+        conn.commit()
+        conn.close()
 
-    @staticmethod
-    def from_dict(data):
-        vehicle_map = {
-            'Car': Car(),
-            'Van': Van(),
-            'Motorcycle': Motorcycle()
-        }
-        return Booking(
-            date_and_time=data['Date and Time'],
-            number=data['Customer No.'],
-            booking_id=data['ID']  ,
-            user=data['Name'],
-            vehicle=data['Vehicle'],
-            pax=data['Pax'],
-            pickup_location=data['Pick Up Address'],
-            dropoff_location=data['Drop Off Address'],
-            total_distance=data['Distance Travelled'],
-            total_cost=data['Total Cost'],
-            status=data['Status']
-        )
-        
+    @classmethod
+    def from_db(cls, booking_id, db_filename):
+        conn = sqlite3.connect(db_filename)
+        c = conn.cursor()
+        c.execute('SELECT * FROM bookings WHERE booking_id = ?', (booking_id,))
+        row = c.fetchone()
+        conn.close()
+        if row:
+            vehicle_map = {
+                'Car': Car(),
+                'Van': Van(),
+                'Motorcycle': Motorcycle()
+            }
+            return cls(
+                booking_number=row[0],
+                user=row[1],
+                pickup_location=row[2],
+                dropoff_location=row[3],
+                date_and_time=row[4],
+                pax=row[5],
+                vehicle=vehicle_map[row[6]],
+                total_distance=row[7],
+                total_cost=row[8],
+                status=row[9],
+            )
+        return None
