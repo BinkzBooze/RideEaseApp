@@ -1,10 +1,13 @@
 import sqlite3
+import re
+import string
+
 from tkinter import *
 from tkinter import messagebox
 from PIL import Image, ImageTk
-import re
-import string
 from tkinter.scrolledtext import ScrolledText
+
+from DatabaseConnection import *
 
 current_signup_window = None
 
@@ -18,21 +21,8 @@ def signup_window_open(event=None):
     global current_signup_window
     if current_signup_window is not None:
         return
-    
-    def connect_db():
-        # Connect to SQLite database
-        conn = sqlite3.connect('Accounts.db')
-        cursor = conn.cursor()
-        # Create table if it doesn't exist
-        cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                            username TEXT PRIMARY KEY,
-                            password TEXT NOT NULL,
-                            email TEXT NOT NULL
-                        )''')
-        conn.commit()
-        return conn
 
-    def signup_clicked():
+    def signup_clicked(event):
         #Validates signup information and creates a new user account if valid.
         valid_email, email_msg = validate_email_signup(signup_email_entry.get())
         valid_username, username_msg = validate_username_signup(signup_user_entry.get())
@@ -60,9 +50,9 @@ def signup_window_open(event=None):
             messagebox.showerror("Agreement Required", terms_msg, parent=current_signup_window)
             return False
         else:
-            username = signup_user_entry.get()
-            password = signup_password_entry.get()
-            email = signup_email_entry.get()
+            username = signup_user_entry.get().strip()
+            password = signup_password_entry.get().strip()
+            email = signup_email_entry.get().strip()
 
             conn = connect_db()
             cursor = conn.cursor()
@@ -86,10 +76,10 @@ def signup_window_open(event=None):
             return False, "Username can only contain alphanumeric characters"
         return True, ""
 
-    def contains_alnum_and_special(s):
+    def contains_alnum_and_special(password):
         #Check if a string contains both alphanumeric and special characters.
-        has_alnum = any(char.isalnum() for char in str(s))
-        has_special = any(char in string.punctuation for char in str(s))
+        has_alnum = any(char.isalnum() for char in str(password))
+        has_special = any(char in string.punctuation for char in str(password))
         return has_alnum and has_special
 
     def validate_password_signup(password):
@@ -176,10 +166,6 @@ def signup_window_open(event=None):
             signup_confirm_entry.insert(0, "Password")
             signup_confirm_entry.config(show="")
 
-    def clear_current_signup_window():
-        global current_signup_window
-        current_signup_window = None
-
     def on_terms_enter(event):
         #Change Color of "terms and conditions" button on Hover.
         terms_label.config(fg="blue")
@@ -247,6 +233,11 @@ def signup_window_open(event=None):
                 terms_check.config(state=NORMAL)
 
         terms_text.bind("<MouseWheel>", enable_checkbox)
+
+    def clear_current_signup_window():
+        global current_signup_window
+        current_signup_window = None
+
     # ---------------------------------------------------------------------------- #
     #                                   FRONTEND                                   #
     # ---------------------------------------------------------------------------- #
