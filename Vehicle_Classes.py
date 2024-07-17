@@ -38,7 +38,3 @@ class Van(Vehicle):
 class Motorcycle(Vehicle):
     def __init__(self):
         super().__init__(vehicle_type="Motorcycle", cost_per_km=10, capacity=1)
-
-    
-
-
