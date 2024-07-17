@@ -22,7 +22,7 @@ def signup_window_open(event=None):
     if current_signup_window is not None:
         return
 
-    def signup_clicked(event):
+    def signup_clicked():
         #Validates signup information and creates a new user account if valid.
         valid_email, email_msg = validate_email_signup(signup_email_entry.get())
         valid_username, username_msg = validate_username_signup(signup_user_entry.get())
@@ -364,3 +364,5 @@ def signup_window_open(event=None):
     terms_label.bind("<Button-1>", lambda event: show_terms())
 
     current_signup_window.mainloop()
+
+signup_window_open()
