@@ -1,7 +1,6 @@
 import requests
-import sqlite3
-import datetime
 import os
+from datetime import datetime
 
 from tkinter import *
 from tkinter import messagebox, font
@@ -18,7 +17,7 @@ from BookingsClass import Booking
 def booking_window_open(current_user):
 
     # ---------------------------------------------------------------------------- #
-    #                                    FUNCTIONS FOR  EWAN KOBA                          #
+    #                                    FUNCTIONS USING GOOGLE MAPS API           #
     # ---------------------------------------------------------------------------- #
 
     def get_distance(pickup_location, dropoff_location, api_key):
@@ -34,7 +33,7 @@ def booking_window_open(current_user):
             if data['status'] == 'OK':
                 distance_value = data['rows'][0]['elements'][0]['distance']['value']  # in meters
                 distance_km = round(distance_value / 1000, 2)  # convert to kilometers
-                return distance_km
+                return int(distance_km)
             else:
                 raise ValueError(f"Error from API: {data['status']}")
         else:
@@ -50,17 +49,6 @@ def booking_window_open(current_user):
             print(f"File not found: {path}")
             return None
         
-    def load_current_user():
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT username FROM users WHERE username = ?", (current_user,))
-        current_user = cursor.fetchone()
-        conn.close()
-        if current_user:
-            return current_user[0]
-        else:
-            return None
-
     # ---------------------------------------------------------------------------- #
     #                         FUNCTIONS FOR SWITCHING TABS                         #
     # ---------------------------------------------------------------------------- #
@@ -133,12 +121,11 @@ def booking_window_open(current_user):
         clear_main()
 
         act_treeview.place(x=100, y=220)
+        act_btn_cnl.place()
 
     # ---------------------------------------------------------------------------- #
     #                             FUNCTIONS FOR BUTTONS                            #
     # ---------------------------------------------------------------------------- #
-
-    vehicle = None
 
     def motorcycle_button_clicked():
         global vehicle
@@ -151,14 +138,8 @@ def booking_window_open(current_user):
     def van_button_clicked():
         global vehicle
         vehicle = Van()
-    
-    def go_back_to_home_page_button_clicked(event):
-        homepage_clicked()
 
-    def view_bookings_list_button_clicked(event):
-        success_clicked()
-
-    def cancel_button_clicked(event):
+    def cancel_button_clicked():
         selected_item = act_treeview.focus()
         if selected_item:
             act_treeview.item(selected_item, values=("Cancelled",))
@@ -250,62 +231,52 @@ def booking_window_open(current_user):
             return False
         
         else:
-            username = load_current_user()
+            username = current_user
             pickup = pickup_e.get().strip()
             dropoff = dropoff_e.get().strip()
             date_and_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             vehicle_type = vehicle.get_vehicle_type()
             pax = pax_e.get().strip()
             total_distance = get_distance(pickup, dropoff, api_key)
-            total_cost = vehicle.calculate_cost(int(total_distance))
+            total_cost = vehicle.calculate_cost(total_distance)
             status = "Ongoing"
-
-            booking = Booking(username, pickup, dropoff, date_and_time, vehicle_type, pax, total_distance, total_cost, status)
-            add_booking_to_treeview(booking.to_dict())
 
             conn = connect_db()
             cursor = conn.cursor()
             table_name = f"{current_user}_Bookings"
-            table_creation_query = f'''CREATE TABLE IF NOT EXISTS {table_name}(
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Username TEXT,
-                    "Pickup Address" TEXT,
-                    "Dropoff Address" TEXT,
-                    "Date and Time" TEXT,
-                    "Vehicle Type" TEXT,
-                    Pax INTEGER,
-                    "Total Distance" REAL,
-                    "Total Cost" REAL,
-                    Status TEXT
-                    )'''
+           
             try:
-                cursor.execute(table_creation_query)
-                conn.commit()
-
-                cursor.execute(f"""
-                    INSERT INTO {table_name} ("Username", "Pickup Address", "Dropoff Address", "Date and Time", "Vehicle Type", "Pax", "Total Distance", "Total Cost", "Status")
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (username, pickup, dropoff, date_and_time, vehicle_type, pax, total_distance, total_cost, status))
-                conn.commit()
-                messagebox.showinfo("Booking Successful", "Your booking has been successfully created.", parent=main)
+                cursor.execute(f'SELECT MAX("Booking No.") FROM "{table_name}"')
+                max_booking_no = cursor.fetchone()
+                if max_booking_no is not None:
+                    next_booking_no = max_booking_no[0] + 1
+                else:
+                    next_booking_no = 1
             except sqlite3.Error as e:
-                conn.rollback()
-                messagebox.showerror("Error", f"Error creating booking: {e}", parent=main)
-            finally:
-                conn.close()
-        
+                messagebox.showerror("Database Error", f"Error fetching max booking number: {e}", parent=main)
+                # Handle the error as needed, e.g., logging or displaying an error message
+                next_booking_no = None  # or another appropriate value indicating failure
+
+            booking = Booking(username, pickup, dropoff, date_and_time, pax, vehicle_type, total_distance, total_cost, status, next_booking_no)
+            booking.save_to_db('RideEaseDatabase.db', f"{current_user}_Bookings")
+            add_booking_to_treeview(booking.from_db('next_booking_no', 'RideEaseDatabase.db', f"{current_user}_Bookings"))
+            messagebox.showinfo("Booking Successful", "Your booking has been successfully created.", parent=main)
+    
+            profile_clicked()
+            conn.close()
+    
     def add_booking_to_treeview(booking_data):
         act_treeview.insert("", "end", values=(
-            booking_data["booking_no."], 
-            booking_data["username"], 
-            booking_data["pickup"], 
-            booking_data["dropoff"], 
-            booking_data["date_and_time"], 
-            booking_data["vehicle_type"], 
-            booking_data["pax"], 
-            booking_data["total_distance"], 
-            booking_data["total_cost"], 
-            booking_data["status"]
+            booking_data["Booking No."], 
+            booking_data["Username"], 
+            booking_data["Pickup Address"], 
+            booking_data["Dropoff Address"], 
+            booking_data["Date and Time"], 
+            booking_data["Vehicle Type"], 
+            booking_data["Pax"], 
+            booking_data["Total Distance"], 
+            booking_data["Total Cost"], 
+            booking_data["Status"]
         ))
 
     # ---------------------------------------------------------------------------- #
@@ -970,7 +941,7 @@ def booking_window_open(current_user):
                         activebackground=menu_bar_color, command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
 
     # Activity
-    act_treeview = Treeview(main, height=15)
+    act_treeview = Treeview(main, height=12)
     act_treeview["columns"] = ("Username", "Email", "Date", "Time", "Pick Up", "Drop off", "Ride Status")
 
     act_treeview.column("#0", width=0, stretch=NO)
@@ -991,11 +962,11 @@ def booking_window_open(current_user):
     act_treeview.heading("Drop off", text="Drop off", anchor=W)
     act_treeview.heading("Ride Status", text="Ride Status", anchor=W)
 
+    act_btn_cnl = Button(main, text="Cancel Booking", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 20),
+                            bd=1, activebackground=menu_bar_color, command=lambda: cancel_button_clicked())
+
     # Insert sample data
     act_treeview.insert(parent="", index="end", iid=0, text="",
                         values=("John", "john@example.com", "07/16", "21:00", "Manila", "Alabang", "Completed"))
 
     main.mainloop()
-
-
-
