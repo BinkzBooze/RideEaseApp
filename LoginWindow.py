@@ -4,13 +4,14 @@
     #3. pip install tkintermapview
     #4. pip install requests
 
-import sqlite3
 from tkinter import *
 from tkinter import messagebox
 from tkintermapview import *
 from PIL import Image, ImageTk
+
 from SignUpWindow import signup_window_open
-from Frontend import main_window
+from BookingWindow import booking_window_open
+from DatabaseConnection import *
 
 def login_window_open():
     """Initialize and display the login window"""
@@ -19,25 +20,12 @@ def login_window_open():
 #                                    BACKEND                                   #
 # ---------------------------------------------------------------------------- #
 
-    def connect_db():
-            # Connect to SQLite database
-            conn = sqlite3.connect('Accounts.db')
-            cursor = conn.cursor()
-            # Create table if it doesn't exist
-            cursor.execute('''CREATE TABLE IF NOT EXISTS users (
-                                username TEXT PRIMARY KEY,
-                                password TEXT NOT NULL,
-                                email TEXT NOT NULL
-                            )''')
-            conn.commit()
-            return conn
-    
     def login_clicked():
         conn = connect_db()
         cursor = conn.cursor()
 
-        username = login_username_entry.get()
-        password = login_password_entry.get()
+        username = login_username_entry.get().strip()
+        password = login_password_entry.get().strip()
 
         # Check if the username exists
         find_user = "SELECT * FROM users WHERE username = ?"
@@ -52,8 +40,10 @@ def login_window_open():
             
             if account:
                 messagebox.showinfo("Login Successful", "Welcome, " + login_username_entry.get() + "!")
+                global current_user
+                current_user = account_username
                 login_window.destroy()
-                main_window()
+                booking_window_open(current_user)
             else:
                 messagebox.showerror("Login Failed", "Incorrect password.")
                 print(f"Login failed for user '{login_username_entry.get()}': Incorrect password.")
