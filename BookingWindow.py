@@ -4,7 +4,7 @@ import datetime
 import os
 
 from tkinter import *
-from tkinter import messagebox
+from tkinter import messagebox, font
 from tkinter.ttk import Treeview
 from tkintermapview import *
 from PIL import ImageTk, Image
@@ -41,7 +41,7 @@ def booking_window_open(current_user):
             response.raise_for_status()
     
     def on_closing():
-        booking_window.destroy()
+        main.destroy()
 
     def load_image(path):
         if os.path.exists(path):
@@ -65,28 +65,28 @@ def booking_window_open(current_user):
     #                         FUNCTIONS FOR SWITCHING TABS                         #
     # ---------------------------------------------------------------------------- #
     def clear_main():
-        booking_window.geometry("800x580")
-        booking_window.configure(bg=main_page_color)
+        main.geometry("800x580")
+        main.configure(bg=main_page_color)
         icon_main.place(x=x_position, y=y_position)
 
         for widgets in home_tab_append:
             widgets.place_forget()
 
         pickup_label.place_forget()
-        pickup_user_entry.place_forget()
+        pickup_e.place_forget()
         dropoff_label.place_forget()
-        dropoff_user_entry.place_forget()
+        dropoff_e.place_forget()
         pax_label.place_forget()
-        pax_user_entry.place_forget()
+        pax_e.place_forget()
         booking_book_btn.place_forget()
         map_lbl_frame.place_forget()
         home_map.pack_forget()
 
         profile_tab_lb.place_forget()
         backtohome_btn.place_forget()
-        view_bookings_btn.place_forget()
+        del_acc_btn.place_forget()
 
-        bookings_treeview.place_forget()
+        act_treeview.place_forget()
 
     def homepage_clicked():
         clear_main()
@@ -112,11 +112,11 @@ def booking_window_open(current_user):
         clear_main()
 
         pickup_label.place(x=550, y=210)
-        pickup_user_entry.place(x=550, y=255)
+        pickup_e.place(x=550, y=255)
         dropoff_label.place(x=550, y=280)
-        dropoff_user_entry.place(x=550, y=320)
+        dropoff_e.place(x=550, y=320)
         pax_label.place(x=550, y=350)
-        pax_user_entry.place(x=550, y=390)
+        pax_e.place(x=550, y=390)
         booking_book_btn.place(x=550, y=440)
         map_lbl_frame.place(x=80, y=210)
         home_map.pack()
@@ -127,31 +127,30 @@ def booking_window_open(current_user):
 
         profile_tab_lb.place(x=100,y=250)
         backtohome_btn.place(x=100, y=430)
-        view_bookings_btn.place(x=500, y=430)
+        del_acc_btn.place(x=500, y=430)
 
     def history_clicked():
         clear_main()
 
-        bookings_treeview.place(x=100, y=220)
+        act_treeview.place(x=100, y=220)
 
     # ---------------------------------------------------------------------------- #
     #                             FUNCTIONS FOR BUTTONS                            #
     # ---------------------------------------------------------------------------- #
 
-    def motorcycle_button_clicked(event):
+    vehicle = None
+
+    def motorcycle_button_clicked():
         global vehicle
         vehicle = Motorcycle()
-        booking_clicked()
-
-    def car_button_clicked(event):
+ 
+    def car_button_clicked():
         global vehicle
         vehicle = Car()
-        booking_clicked()
 
-    def van_button_clicked(event):
+    def van_button_clicked():
         global vehicle
         vehicle = Van()
-        booking_clicked()
     
     def go_back_to_home_page_button_clicked(event):
         homepage_clicked()
@@ -160,13 +159,11 @@ def booking_window_open(current_user):
         success_clicked()
 
     def cancel_button_clicked(event):
-        selected_item = bookings_treeview.focus()
+        selected_item = act_treeview.focus()
         if selected_item:
-            bookings_treeview.item(selected_item, values=("Cancelled",))
+            act_treeview.item(selected_item, values=("Cancelled",))
             cancel_booking()
 
-    
-    
     # ---------------------------------------------------------------------------- #
     #                       FUNCTIONS FOR VALIDATION OF INPUTS                     #
     # ---------------------------------------------------------------------------- #
@@ -194,7 +191,7 @@ def booking_window_open(current_user):
         elif not is_address_valid(pickup_address):
             return False, "Pickup address not found or invalid."
         else:
-            return True
+            return True, ""
 
     def validate_dropoff_address(dropoff_address):
         if not dropoff_address:
@@ -202,9 +199,13 @@ def booking_window_open(current_user):
         elif not is_address_valid(dropoff_address):
             return False, "Dropoff address not found or invalid."
         else:
-            return True
+            return True, ""
 
     def validate_passenger_amount(passengers):
+        global vehicle
+
+        if vehicle is None:
+            return False, "Vehicle type not selected."
         try:
             passenger_count = int(passengers)
         except ValueError:
@@ -214,17 +215,17 @@ def booking_window_open(current_user):
             return False, "Passenger count should be a positive integer."
 
         if isinstance(vehicle, Car) and 4 < passenger_count <= 6:
-            if not messagebox.askyesno("Confirmation", "The number of passengers exceeds the car's capacity. Are you sure you want to continue?", parent=booking_window):
-                return False
+            if not messagebox.askyesno("Confirmation", "The number of passengers exceeds the car's capacity. Are you sure you want to continue?", parent=main):
+                return False, "Capacity exceeded confirmation denied."
 
         elif isinstance(vehicle, Van) and 10 < passenger_count <= 12:
-            if not messagebox.askyesno("Confirmation", "The number of passengers exceeds the van's capacity. Are you sure you want to continue?", parent=booking_window):
-                return False
+            if not messagebox.askyesno("Confirmation", "The number of passengers exceeds the van's capacity. Are you sure you want to continue?", parent=main):
+                return False, "Capacity exceeded confirmation denied."
 
         elif passenger_count > vehicle.capacity:
             return False, "The selected vehicle does not have enough capacity for the number of passengers."
     
-        return True
+        return True, ""
 
     # ---------------------------------------------------------------------------- #
     #                             FUNCTIONS FOR BOOKING                            #
@@ -232,29 +233,29 @@ def booking_window_open(current_user):
 
     def book_button_clicked():
         #Validates booking information and creates a new booking if valid. Saves it in the current user's list.
-        valid_pickup_location, pickup_msg = validate_pickup_address(pickup_user_entry.get().strip())
-        valid_dropoff_location, dropoff_msg = validate_dropoff_address(dropoff_user_entry.get().strip())
-        valid_passenger_amount, pax_msg = validate_passenger_amount(pax_user_entry.get().strip())
+        valid_pickup_location, pickup_msg = validate_pickup_address(pickup_e.get().strip())
+        valid_dropoff_location, dropoff_msg = validate_dropoff_address(dropoff_e.get().strip())
+        valid_passenger_amount, pax_msg = validate_passenger_amount(pax_e.get().strip())
 
         if not valid_pickup_location:
-            messagebox.showerror("Invalid Pick-up Address", pickup_msg, parent=booking_window)
+            messagebox.showerror("Invalid Pick-up Address", pickup_msg, parent=main)
             return False
         
         elif not valid_dropoff_location:
-            messagebox.showerror("Invalid Drop off Address", dropoff_msg, parent=booking_window)
+            messagebox.showerror("Invalid Drop off Address", dropoff_msg, parent=main)
             return False
             
         elif not valid_passenger_amount:
-            messagebox.showerror("Invalid Passenger Amount", pax_msg, parent=booking_window)
+            messagebox.showerror("Invalid Passenger Amount", pax_msg, parent=main)
             return False
         
         else:
             username = load_current_user()
-            pickup = pickup_user_entry.get().strip()
-            dropoff = dropoff_user_entry.get().strip()
+            pickup = pickup_e.get().strip()
+            dropoff = dropoff_e.get().strip()
             date_and_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             vehicle_type = vehicle.get_vehicle_type()
-            pax = pax_user_entry.get().strip()
+            pax = pax_e.get().strip()
             total_distance = get_distance(pickup, dropoff, api_key)
             total_cost = vehicle.calculate_cost(int(total_distance))
             status = "Ongoing"
@@ -264,16 +265,37 @@ def booking_window_open(current_user):
 
             conn = connect_db()
             cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO {username}'s bookings (Username, Pickup Address, Dropoff Address, Date and Time, Vehicle Type, Pax, Total Distance, Total Cost, Status)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (username, pickup, dropoff, date_and_time, vehicle_type, pax, total_distance, total_cost, status))
-            conn.commit()
-            conn.close()
-            messagebox.showinfo("Booking Successful", "Your booking has been successfully created.", parent=booking_window)
+            table_name = f"{current_user}_Bookings"
+            table_creation_query = f'''CREATE TABLE IF NOT EXISTS {table_name}(
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Username TEXT,
+                    "Pickup Address" TEXT,
+                    "Dropoff Address" TEXT,
+                    "Date and Time" TEXT,
+                    "Vehicle Type" TEXT,
+                    Pax INTEGER,
+                    "Total Distance" REAL,
+                    "Total Cost" REAL,
+                    Status TEXT
+                    )'''
+            try:
+                cursor.execute(table_creation_query)
+                conn.commit()
+
+                cursor.execute(f"""
+                    INSERT INTO {table_name} ("Username", "Pickup Address", "Dropoff Address", "Date and Time", "Vehicle Type", "Pax", "Total Distance", "Total Cost", "Status")
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (username, pickup, dropoff, date_and_time, vehicle_type, pax, total_distance, total_cost, status))
+                conn.commit()
+                messagebox.showinfo("Booking Successful", "Your booking has been successfully created.", parent=main)
+            except sqlite3.Error as e:
+                conn.rollback()
+                messagebox.showerror("Error", f"Error creating booking: {e}", parent=main)
+            finally:
+                conn.close()
         
     def add_booking_to_treeview(booking_data):
-        bookings_treeview.insert("", "end", values=(
+        act_treeview.insert("", "end", values=(
             booking_data["booking_no."], 
             booking_data["username"], 
             booking_data["pickup"], 
@@ -291,9 +313,9 @@ def booking_window_open(current_user):
     # ---------------------------------------------------------------------------- #
 
     def cancel_booking():
-        selected_item = bookings_treeview.focus()
+        selected_item = act_treeview.focus()
         if selected_item:
-            booking_data = bookings_treeview.item(selected_item)['values']
+            booking_data = act_treeview.item(selected_item)['values']
             booking_number = booking_data[0]  # Assuming the first column is the booking ID
 
             conn = connect_db()
@@ -301,30 +323,34 @@ def booking_window_open(current_user):
             cursor.execute("DELETE FROM bookings WHERE id=?", (booking_number,))
             conn.commit()
             conn.close()
-            bookings_treeview.delete(selected_item)
-            messagebox.showinfo("Booking Cancelled", "The booking has been successfully cancelled.", parent=booking_window)
+            act_treeview.delete(selected_item)
+            messagebox.showinfo("Booking Cancelled", "The booking has been successfully cancelled.", parent=main)
 
     def load_bookings():
-        conn = connect_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM {username}'s bookings")
-        bookings = cursor.fetchall()
-        conn.close()
+        try:
+            conn = connect_db()
+            cursor = conn.cursor()
+            table_name = f"{current_user}_Bookings"
+            cursor.execute(f"SELECT * FROM {table_name}")
+            bookings = cursor.fetchall()
+            conn.close()
 
-        for booking in bookings:
-            booking_data = {
-                "booking_number": booking[0],
-                "username": booking[1],
-                "pickup": booking[2],
-                "dropoff": booking[3],
-                "date_and_time": booking[4],
-                "vehicle_type": booking[5],
-                "pax": booking[6],
-                "total_distance": booking[7],
-                "total_cost": booking[8],
-                "status": booking[9]
-            }
-            add_booking_to_treeview(booking_data)
+            for booking in bookings:
+                booking_data = {
+                    "booking_number": booking[0],
+                    "username": booking[1],
+                    "pickup": booking[2],
+                    "dropoff": booking[3],
+                    "date_and_time": booking[4],
+                    "vehicle_type": booking[5],
+                    "pax": booking[6],
+                    "total_distance": booking[7],
+                    "total_cost": booking[8],
+                    "status": booking[9]
+                }
+                add_booking_to_treeview(booking_data)
+        except:
+            pass
 
     load_bookings()
 
@@ -344,26 +370,26 @@ def booking_window_open(current_user):
 
             toggle_menu_btn.config(image=close_icon)
             toggle_menu_btn.place(x=8, y=15)
-            extended_menu = Label(booking_window, bg=menu_bar_color, padx=100, pady=580)
+            extended_menu = Label(main, bg=menu_bar_color, padx=100, pady=580)
             extended_menu.place(x=50, y=0)
 
             # Shows extended names for the icons (2)
-            home_name = Button(booking_window, text="HOME", bg=menu_bar_color, fg="black", bd=0, 
+            home_name = Button(main, text="HOME", bg=menu_bar_color, fg="black", bd=0, 
                                 highlightthickness=0, font=("Helvetica", 20, "bold"),
                                 activebackground=menu_bar_color, 
                                 command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0), homepage_clicked()))
-            booking_name = Button(booking_window, text="BOOKING", bg=menu_bar_color, fg="black", bd=0, 
+            booking_name = Button(main, text="BOOKING", bg=menu_bar_color, fg="black", bd=0, 
                                     highlightthickness=0, font=("Helvetica", 20, "bold"),
                                     activebackground=menu_bar_color,
                                     command=lambda: (btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
-            success_name = Button(booking_window, text="PROFILE", bg=menu_bar_color, fg="black", bd=0, 
+            success_name = Button(main, text="PROFILE", bg=menu_bar_color, fg="black", bd=0, 
                                     highlightthickness=0, font=("Helvetica", 20, "bold"),
                                     activebackground=menu_bar_color,
-                                    command=lambda: (btn_modes(success_btn_ind, mode_int=2), success_clicked()))
-            history_name = Button(booking_window, text="ACTIVITY", bg=menu_bar_color, fg="black", bd=0, 
+                                    command=lambda: (btn_modes(profile_btn_ind, mode_int=2), success_clicked()))
+            history_name = Button(main, text="ACTIVITY", bg=menu_bar_color, fg="black", bd=0, 
                                     highlightthickness=0, font=("Helvetica", 20, "bold"),
                                     activebackground=menu_bar_color,
-                                    command=lambda: (btn_modes(history_btn_ind, mode_int=3), history_clicked()))
+                                    command=lambda: (btn_modes(activity_btn_ind, mode_int=3), history_clicked()))
             home_name.place(x=70, y=130)
             booking_name.place(x=70, y=190)
             success_name.place(x=70, y=250)
@@ -436,39 +462,39 @@ def booking_window_open(current_user):
                 vehicle = 'Van'
                 print(vehicle)
 
-        home_lbl_container1 = LabelFrame(booking_window, bg=menu_bar_color, width=200, height=320, bd=3)
+        home_lbl_container1 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
         home_lbl_container1.place(x=80, y=210)
-        motorcycle_img = Label(booking_window, image=motorcycle_icon, bg=menu_bar_color)
+        motorcycle_img = Label(main, image=motorcycle_icon, bg=menu_bar_color)
         motorcycle_img.place(x=125, y=225)
-        motorcycle_name = Label(booking_window, text="MOTORCYCLE", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
+        motorcycle_name = Label(main, text="MOTORCYCLE", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
         motorcycle_name.place(x=93, y=330)
-        motorcycle_info = Label(booking_window, text="Recommended Pax: 1\nPassenger Limit: 1", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
+        motorcycle_info = Label(main, text="Recommended Pax: 1\nPassenger Limit: 1", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
         motorcycle_info.place(x=92, y=385)
-        container1_btn = Button(booking_window, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
+        container1_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
                                 command=lambda: vehicle_clicked(0))
         container1_btn.place(x=97, y=460)
 
-        home_lbl_container2 = LabelFrame(booking_window, bg=menu_bar_color, width=200, height=320, bd=3)
+        home_lbl_container2 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
         home_lbl_container2.place(x=330, y=210)
-        car_img = Label(booking_window, image=car2_icon, bg=menu_bar_color)
+        car_img = Label(main, image=car2_icon, bg=menu_bar_color)
         car_img.place(x=370, y=225)
-        car_name = Label(booking_window, text="CAR", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
+        car_name = Label(main, text="CAR", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
         car_name.place(x=400, y=330)
-        car_info = Label(booking_window, text="Recommended Pax: 2-4\nPassenger Limit: 6", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
+        car_info = Label(main, text="Recommended Pax: 2-4\nPassenger Limit: 6", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
         car_info.place(x=336, y=385)
-        container2_btn = Button(booking_window, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
+        container2_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
                                 command=lambda: vehicle_clicked(1))
         container2_btn.place(x=345, y=460)
 
-        home_lbl_container3 = LabelFrame(booking_window, bg=menu_bar_color, width=200, height=320, bd=3)
+        home_lbl_container3 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
         home_lbl_container3.place(x=580, y=210)
-        van_img = Label(booking_window, image=van_icon, bg=menu_bar_color)
+        van_img = Label(main, image=van_icon, bg=menu_bar_color)
         van_img.place(x=618, y=225)
-        van_name = Label(booking_window, text="VAN", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
+        van_name = Label(main, text="VAN", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
         van_name.place(x=650, y=330)
-        van_info = Label(booking_window, text="Recommended Pax: 5-10\nPassenger Limit: 12", font=("Helvetica", 11, "bold"), bg=menu_bar_color)
+        van_info = Label(main, text="Recommended Pax: 5-10\nPassenger Limit: 12", font=("Helvetica", 11, "bold"), bg=menu_bar_color)
         van_info.place(x=590, y=385)
-        container3_btn = Button(booking_window, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
+        container3_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
                                 command=lambda: vehicle_clicked(2))
         container3_btn.place(x=595, y=460)
 
@@ -499,8 +525,8 @@ def booking_window_open(current_user):
         # Changes all the menu icons to orange then changes the ind_lb to white
         home_btn_ind.config(bg=menu_bar_color)
         booking_btn_ind.config(bg=menu_bar_color)
-        success_btn_ind.config(bg=menu_bar_color)
-        history_btn_ind.config(bg=menu_bar_color)
+        profile_btn_ind.config(bg=menu_bar_color)
+        activity_btn_ind.config(bg=menu_bar_color)
 
         ind_lb.config(bg="white")
 
@@ -512,11 +538,11 @@ def booking_window_open(current_user):
             mode_int = 1
             print ("Booking Tab")
 
-        elif ind_lb == success_btn_ind:
+        elif ind_lb == profile_btn_ind:
             mode_int = 2
             print ("Success Tab")
 
-        elif ind_lb == history_btn_ind:
+        elif ind_lb == activity_btn_ind:
             mode_int = 3
             print ("History Tab")
 
@@ -527,53 +553,284 @@ def booking_window_open(current_user):
     # ------------------------------------------------------------------------- #
     #                                   DESIGN                                  #
     # ------------------------------------------------------------------------- #
+    
+    # All color
+    main_page_color = "#0f0f0f"
+    menu_bar_color = "#ffb700"
+    history_bg_color = "#ffec9e"
 
-    booking_window = Toplevel()
-    booking_window.title("Ride Booking System")
-    booking_window.iconbitmap("icons/RideEaseLogo.ico") 
-    booking_window.resizable(False, False)
-    booking_window.protocol("WM_DELETE_WINDOW", on_closing)
+    main = Tk()
+    main.geometry("800x580+0+0")
+    main.title("Ride Ease - Book a Ride")
+    main.resizable(False, False)
+    main.configure(bg=main_page_color)
+    main.iconbitmap("icons/RideEaseLogo.ico") 
+    
+    # Mode to indicate which tab (0 for Home, 1 for Booking, 2 for Profile, 3 for Activity)
+    global_mode_int = 0 # Indicates its in Home Tab
 
-    # Home Tab Widgets
-    motorcycle_button = Button(home_tab, text="Motorcycle", command=lambda: motorcycle_button_clicked(None))
-    car_button = Button(home_tab, text="Car", command=lambda: car_button_clicked(None))
-    van_button = Button(home_tab, text="Van", command=lambda: van_button_clicked(None))
+    # Button Indicator Function
+    def btn_modes(ind_lb, mode_int):
+        global home_name, booking_name, profile_name, activity_name
 
-    motorcycle_button.pack(pady=10)
-    car_button.pack(pady=10)
-    van_button.pack(pady=10)
+        # Changes all the menu icons to orange then changes the ind_lb to white
+        home_btn_ind.config(bg=menu_bar_color)
+        booking_btn_ind.config(bg=menu_bar_color)
+        profile_btn_ind.config(bg=menu_bar_color)
+        activity_btn_ind.config(bg=menu_bar_color)
 
-    pickup_user_label = Label(booking_window, text="Pick-up Location")
-    dropoff_user_label = Label(booking_window, text="Drop-off Location")
-    pax_user_label = Label(booking_window, text="Number of Passengers")
+        ind_lb.config(bg="white")
 
-    pickup_user_label.pack(pady=5)
-    pickup_user_entry.pack(pady=5)
-    dropoff_user_label.pack(pady=5)
-    dropoff_user_entry.pack(pady=5)
-    pax_user_label.pack(pady=5)
-    pax_user_entry.pack(pady=5)
+        if ind_lb == home_btn_ind:
+            mode_int = 0
+            print ("Home Tab")
 
-    book_button = Button(booking_window, text="Book Now", command=lambda: book_button_clicked(None))
-    book_button.pack(pady=20)
+        elif ind_lb == booking_btn_ind:
+            mode_int = 1
+            print ("Booking Tab")
 
-    # Bookings List Tab Widgets
-    bookings_treeview = Treeview(booking_window, columns=("Username", "Pickup", "Dropoff", "Date and Time", "Vehicle Type", "Passengers", "Distance", "Cost", "Status"), show='headings')
-    bookings_treeview.heading("booking_number", text="No.")
-    bookings_treeview.heading("username", text="Username")
-    bookings_treeview.heading("pickup", text="Pickup Address")
-    bookings_treeview.heading("dropoff", text="Dropoff Address")
-    bookings_treeview.heading("date_and_time", text="Date and Time")
-    bookings_treeview.heading("vehicle_type", text="Vehicle Type")
-    bookings_treeview.heading("pax", text="Pax")
-    bookings_treeview.heading("total_distance", text="Total Distance")
-    bookings_treeview.heading("total_cost", text="Total Cost")
-    bookings_treeview.heading("status", text="Status")
+        elif ind_lb == profile_btn_ind:
+            mode_int = 2
+            print ("Profile Tab")
 
-    bookings_treeview.pack(expand=True, fill='both')
+        elif ind_lb == activity_btn_ind:
+            mode_int = 3
+            print ("Activity Tab")
 
-    cancel_button = Button(booking_window, text="Cancel Booking", command=lambda:cancel_button_clicked())
-    cancel_button.pack(pady=10)
+        global global_mode_int
+        global_mode_int = mode_int
+
+    # Initialize Toggle Button as default(off)
+    is_on = False
+
+    # Toggle Icon Function
+    def toggle():
+
+        # All these global variables just shows functionality on toggle
+        global is_on, home_name, booking_name, profile_name, activity_name, global_mode_int
+        is_on = not is_on
+
+        # Toggles to toggle_close_icon and toggle_menu_btn
+        if is_on:
+            menu_bar_frame.configure(width=250)
+            menu_bar_frame.tkraise()
+            toggle_menu_btn.configure(image=close_icon)
+            toggle_menu_btn.place(x=5, y=14)
+
+            # Shows extended names for the icons (2)
+            home_name = Button(main, text="HOME", bg=menu_bar_color, fg="black", bd=0, 
+                                highlightthickness=0, font=("Helvetica", 20, "bold"),
+                                activebackground=menu_bar_color, 
+                                command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0), homepage_clicked()))
+            booking_name = Button(main, text="BOOKING", bg=menu_bar_color, fg="black", bd=0, 
+                                    highlightthickness=0, font=("Helvetica", 20, "bold"),
+                                    activebackground=menu_bar_color,
+                                    command=lambda: (btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
+            profile_name = Button(main, text="PROFILE", bg=menu_bar_color, fg="black", bd=0, 
+                                    highlightthickness=0, font=("Helvetica", 20, "bold"),
+                                    activebackground=menu_bar_color,
+                                    command=lambda: (btn_modes(profile_btn_ind, mode_int=2), profile_clicked()))
+            activity_name = Button(main, text="ACTIVITY", bg=menu_bar_color, fg="black", bd=0, 
+                                    highlightthickness=0, font=("Helvetica", 20, "bold"),
+                                    activebackground=menu_bar_color,
+                                    command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
+            home_name.place(x=70, y=130)
+            booking_name.place(x=70, y=190)
+            profile_name.place(x=70, y=250)
+            activity_name.place(x=70, y=310)
+
+        else:
+            menu_bar_frame.configure(width=50)
+            toggle_menu_btn.configure(image=toggle_icon)
+            toggle_menu_btn.place(x=4, y=10)
+
+            # Deletes the icon names
+            home_name.place_forget()
+            booking_name.place_forget()
+            profile_name.place_forget()
+            activity_name.place_forget()
+
+    def clear_main():
+        main.configure(bg=main_page_color)
+        icon_main.place(x=x_position, y=y_position)
+
+        for widgets in home_tab_append:
+            widgets.place_forget()
+
+        pickup_label.place_forget()
+        pickup_e.place_forget()
+        dropoff_label.place_forget()
+        dropoff_e.place_forget()
+        pax_label.place_forget()
+        pax_e.place_forget()
+        booking_book_btn.place_forget()
+        map_lbl_frame.place_forget()
+        home_map.pack_forget()
+
+        profile_tab_lb.place_forget()
+        backtohome_btn.place_forget()
+        del_acc_btn.place_forget()
+
+        act_treeview.place_forget()
+
+    def homepage_clicked():
+        clear_main()
+        
+        home_lbl_container1.place(x=80, y=210)
+        motorcycle_img.place(x=125, y=225)
+        motorcycle_name.place(x=93, y=330)
+        motorcycle_info.place(x=92, y=385)
+        container1_btn.place(x=97, y=460)
+        home_lbl_container2.place(x=330, y=210)
+        car_img.place(x=370, y=225)
+        car_name.place(x=400, y=330)
+        car_info.place(x=336, y=385)
+        container2_btn.place(x=345, y=460)
+        home_lbl_container3.place(x=580, y=210)
+        van_img.place(x=618, y=225)
+        van_name.place(x=650, y=330)
+        van_info.place(x=590, y=385)
+        container3_btn.place(x=595, y=460)
+
+    def booking_clicked():
+
+        clear_main()
+
+        pickup_label.place(x=550, y=210)
+        pickup_e.place(x=550, y=255)
+        dropoff_label.place(x=550, y=280)
+        dropoff_e.place(x=550, y=320)
+        pax_label.place(x=550, y=350)
+        pax_e.place(x=550, y=390)
+        booking_book_btn.place(x=550, y=440)
+        map_lbl_frame.place(x=80, y=210)
+        home_map.pack()
+
+    def profile_clicked():
+
+        clear_main()
+
+        profile_tab_lb.place(x=100,y=250)
+        backtohome_btn.place(x=100, y=430)
+        del_acc_btn.place(x=500, y=430)
+
+    def activity_clicked():
+        clear_main()
+
+        act_treeview.place(x=80, y=200)
+
+    def load_image(path):
+        if os.path.exists(path):
+            return ImageTk.PhotoImage(file=path)
+        else:
+            print(f"File not found: {path}")
+            return None
+
+    home_tab_append = []
+
+    # Home Page Tab
+    def home_tab():
+        global home_lbl_container1, motorcycle_name, motorcycle_info, motorcycle_img, container1_btn
+        global home_lbl_container2, car_name, car_info, car_img, container2_btn
+        global home_lbl_container3, van_name, van_info, van_img, container3_btn
+
+        def clear_color_hometab():
+            home_lbl_container1.configure(bg=menu_bar_color)
+            home_lbl_container2.configure(bg=menu_bar_color)
+            home_lbl_container3.configure(bg=menu_bar_color)
+            motorcycle_img.configure(bg=menu_bar_color)
+            car_img.configure(bg=menu_bar_color)
+            van_img.configure(bg=menu_bar_color)
+            motorcycle_name.configure(bg=menu_bar_color)
+            car_name.configure(bg=menu_bar_color)
+            van_name.configure(bg=menu_bar_color)
+            motorcycle_info.configure(bg=menu_bar_color)
+            car_info.configure(bg=menu_bar_color)
+            van_info.configure(bg=menu_bar_color)
+
+        def vehicle_clicked(mode):
+            print("Mode =", mode)
+            clear_color_hometab()
+            highlight_color = "#FFE8C8"
+            if mode == 0:
+                home_lbl_container1.configure(bg=highlight_color)
+                motorcycle_name.configure(bg=highlight_color)
+                motorcycle_img.configure(bg=highlight_color)
+                motorcycle_info.configure(bg=highlight_color)
+                container1_btn.configure(state=DISABLED)
+                container2_btn.configure(state=NORMAL)
+                container3_btn.configure(state=NORMAL)
+            elif mode == 1:
+                home_lbl_container2.configure(bg=highlight_color)
+                car_name.configure(bg=highlight_color)
+                car_img.configure(bg=highlight_color)
+                car_info.configure(bg=highlight_color)
+                container1_btn.configure(state=NORMAL)
+                container2_btn.configure(state=DISABLED)
+                container3_btn.configure(state=NORMAL)
+            elif mode == 2:
+                home_lbl_container3.configure(bg=highlight_color)
+                van_name.configure(bg=highlight_color)
+                van_img.configure(bg=highlight_color)
+                van_info.configure(bg=highlight_color)
+                container1_btn.configure(state=NORMAL)
+                container2_btn.configure(state=NORMAL)
+                container3_btn.configure(state=DISABLED)
+
+        home_lbl_container1 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
+        home_lbl_container1.place(x=80, y=210)
+        motorcycle_img = Label(main, image=motorcycle_icon, bg=menu_bar_color)
+        motorcycle_img.place(x=125, y=225)
+        motorcycle_name = Label(main, text="MOTORCYCLE", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
+        motorcycle_name.place(x=93, y=330)
+        motorcycle_info = Label(main, text="Recommended Pax: 1\nPassenger Limit: 1", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
+        motorcycle_info.place(x=92, y=385)
+        container1_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
+                                command=lambda: [vehicle_clicked(0), btn_modes(booking_btn_ind, mode_int=1), motorcycle_button_clicked(), booking_clicked()]
+                                                )
+        container1_btn.place(x=97, y=460)
+
+        home_lbl_container2 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
+        home_lbl_container2.place(x=330, y=210)
+        car_img = Label(main, image=car2_icon, bg=menu_bar_color)
+        car_img.place(x=370, y=225)
+        car_name = Label(main, text="CAR", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
+        car_name.place(x=400, y=330)
+        car_info = Label(main, text="Recommended Pax: 2-4\nPassenger Limit: 6", font=("Helvetica", 13, "bold"), bg=menu_bar_color)
+        car_info.place(x=336, y=385)
+        container2_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
+                                command=lambda: [vehicle_clicked(1), btn_modes(booking_btn_ind, mode_int=1), car_button_clicked(), booking_clicked()])
+        container2_btn.place(x=345, y=460)
+
+        home_lbl_container3 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
+        home_lbl_container3.place(x=580, y=210)
+        van_img = Label(main, image=van_icon, bg=menu_bar_color)
+        van_img.place(x=618, y=225)
+        van_name = Label(main, text="VAN", font=("Helvetica", 18, "bold"), bg=menu_bar_color)
+        van_name.place(x=650, y=330)
+        van_info = Label(main, text="Recommended Pax: 5-10\nPassenger Limit: 12", font=("Helvetica", 11, "bold"), bg=menu_bar_color)
+        van_info.place(x=590, y=385)
+        container3_btn = Button(main, text="SELECT", width=20, bd=2, bg="white", font=("Helvetica", 10, "bold"),
+                                command=lambda: [vehicle_clicked(2), btn_modes(booking_btn_ind, mode_int=1), van_button_clicked(), booking_clicked()])
+        container3_btn.place(x=595, y=460)
+
+        home_tab_append.extend([
+        home_lbl_container1,
+        home_lbl_container2,
+        home_lbl_container3,
+        container1_btn,
+        container2_btn,
+        container3_btn,
+        motorcycle_img,
+        motorcycle_info,
+        motorcycle_name,
+        car_img,
+        car_name,
+        car_info,
+        van_img,
+        van_info,
+        van_name
+        ])
 
     # Icons (Logo, Menu Toggle, Home, Booking, Profile, Activity, Close)
     icon_path = "images/homepage_icon.png"
@@ -597,9 +854,6 @@ def booking_window_open(current_user):
     close_path = "images/close_btn_icon.png"
     close_icon = load_image(close_path)
 
-    car_icon_path = "images/car.png"
-    car_icon = load_image(car_icon_path)
-
     motorcycle_path = "images/motorcycle.png"
     motorcycle_icon = load_image(motorcycle_path)
 
@@ -609,21 +863,23 @@ def booking_window_open(current_user):
     van_path = "images/van.png"
     van_icon = load_image(van_path)
 
-    filler_icon = car_icon
-
-    main_page_color = "#0f0f0f"
-    menu_bar_color = "#ffb700"
-    history_bg_color = "#ffec9e"
-
-    # Initialize Toggle Button as default(off)
-    is_on = False
-
     # Menu Bar Config
-    menu_bar_frame = Frame(booking_window, bg=menu_bar_color, padx=3, pady=4)
+    menu_bar_frame = Frame(main, bg=menu_bar_color, padx=3, pady=4)
+
+    # Menu Bar Placement
+    menu_bar_frame.pack(side=LEFT, fill=Y)
+    menu_bar_frame.pack_propagate(False)
+    menu_bar_frame.configure(width=50)
+
+    # Toggle Icon Button and Packing (Placed in Menu Bar)
+    toggle_menu_btn = Button(menu_bar_frame, image=toggle_icon, bg=menu_bar_color,
+                            bd=0, activebackground=menu_bar_color, command=toggle)
+    toggle_menu_btn.place(x=4, y=10)
 
     # Home Button (Placed in Menu Bar)
     home_btn = Button(menu_bar_frame, image=home_icon, bg=menu_bar_color,
-                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0), homepage_clicked()))
+                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0),
+                            homepage_clicked()))
     home_btn.place(x=8, y=130, width=30, height=40)
 
     # Home Button Indicator
@@ -632,7 +888,8 @@ def booking_window_open(current_user):
 
     # Booking Button (Placed in Menu Bar)
     booking_btn = Button(menu_bar_frame, image=booking_icon, bg=menu_bar_color,
-                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(booking_btn_ind, mode_int=1), booking_clicked()))
+                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(booking_btn_ind, mode_int=1),
+                        booking_clicked()))
     booking_btn.place(x=8, y=190, width=30, height=40)
 
     # Booking Button Indicator
@@ -641,21 +898,23 @@ def booking_window_open(current_user):
 
     # Profile Button (Placed in Menu Bar)
     profile_btn = Button(menu_bar_frame, image=profile_icon, bg=menu_bar_color,
-                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(success_btn_ind, mode_int=2), success_clicked()))
+                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(profile_btn_ind, mode_int=2),
+                            profile_clicked()))
     profile_btn.place(x=8, y=250, width=30, height=40)
 
     # Profile Button Indicator
-    success_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
-    success_btn_ind.place(x=1, y=250, width=3, height=40)
+    profile_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
+    profile_btn_ind.place(x=1, y=250, width=3, height=40)
 
     # Activity Button (Placed in Menu Bar)
     activity_btn = Button(menu_bar_frame, image=activity_icon, bg=menu_bar_color,
-                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(history_btn_ind, mode_int=3), history_clicked()))
+                            bd=0, activebackground=menu_bar_color, command=lambda: (btn_modes(activity_btn_ind, mode_int=3),
+                            activity_clicked()))
     activity_btn.place(x=8, y=310, width=30, height=40)
 
     # Activity Button Indicator
-    history_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
-    history_btn_ind.place(x=1, y=310, width=3, height=40)
+    activity_btn_ind = Label(menu_bar_frame, bg=menu_bar_color)
+    activity_btn_ind.place(x=1, y=310, width=3, height=40)
 
     # Resize Icon
     resize_icon = icon.resize((500, 136), Image.LANCZOS)
@@ -671,59 +930,72 @@ def booking_window_open(current_user):
     x_position = x_position + 30
     y_position = 30
 
-    icon_main = Label(booking_window, image=tk_icon, borderwidth=0, highlightthickness=0, bg=main_page_color)
+    icon_main = Label(main, image=tk_icon, borderwidth=0, highlightthickness=0, bg=main_page_color)
     icon_main.place(x=x_position, y=y_position)
-
-    home_tab_append = []
-
     # Home Tab
     home_tab()
 
     # Booking Tab (Map)
-    map_lbl_frame = LabelFrame(booking_window)
+    map_lbl_frame = LabelFrame(main)
 
     home_map = TkinterMapView(map_lbl_frame, width=430, height=300, corner_radius=0)
     home_map.set_position(14.5995, 120.9842) # Manila
     home_map.set_zoom(10)
 
     # Pick-up label and entry
-    pickup_label = Label(booking_window, text="Pick Up", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 20))
+    pickup_label = Label(main, text="Pick Up", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 20))
 
-    pickup_var = StringVar()
-    pickup_user_entry = Entry(booking_window, textvariable=pickup_var, width=35)
+    pickup_e = Entry(main, width=35)
 
     # Drop-off label and entry
-    dropoff_label = Label(booking_window, text="Drop Off", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 20))
+    dropoff_label = Label(main, text="Drop Off", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 20))
 
-    dropoff_var = StringVar()
-    dropoff_user_entry = Entry(booking_window, textvariable=dropoff_var, width=35)
+    dropoff_e = Entry(main, width=35)
 
     # Pax label and entry
-    pax_label = Label(booking_window, text="Pax", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 20))
+    pax_label = Label(main, text="Pax", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 20))
 
-    pax_var = IntVar()
-    pax_user_entry = Entry(booking_window, textvariable=pax_var, width=35)
+    pax_e = Entry(main, width=35)
 
     # Book Button
-    booking_book_btn = Button(booking_window, text="Book", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 12),
-                            bd=0, activebackground=menu_bar_color, padx=85, pady=5)
+    booking_book_btn = Button(main, text="Book", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 12),
+                            bd=0, activebackground=menu_bar_color, padx=85, pady=5, 
+                            command=lambda: [btn_modes(ind_lb=profile_btn_ind, mode_int=2), book_button_clicked()])
 
     # Profile
-    profile_tab_lb = Label(booking_window, text="Booking Successful!", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 25))
-    backtohome_btn = Button(booking_window, text="Go Back to Homepage", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 20),
+    profile_tab_lb = Label(main, text="Booking Successful!", fg=menu_bar_color, bg=main_page_color, font=("Helvetica", 25))
+    backtohome_btn = Button(main, text="Go Back to Homepage", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 20),
                         activebackground=menu_bar_color, command=lambda: (btn_modes(ind_lb=home_btn_ind, mode_int=0), homepage_clicked()))
-    view_bookings_btn = Button(booking_window, text="View All Bookings", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 20),
-                        activebackground=menu_bar_color, command=lambda: (btn_modes(history_btn_ind, mode_int=3), history_clicked()))
+    del_acc_btn = Button(main, text="View All Bookings", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 20),
+                        activebackground=menu_bar_color, command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
 
-    # Menu Bar Placement
-    menu_bar_frame.pack(side=LEFT, fill=Y)
-    menu_bar_frame.pack_propagate(False)
-    menu_bar_frame.configure(width=50)
+    # Activity
+    act_treeview = Treeview(main, height=15)
+    act_treeview["columns"] = ("Username", "Email", "Date", "Time", "Pick Up", "Drop off", "Ride Status")
 
-    # Toggle Icon Button and Packing (Placed in Menu Bar)
-    toggle_menu_btn = Button(menu_bar_frame, image=toggle_icon, bg=menu_bar_color,
-                            bd=0, activebackground=menu_bar_color, command=toggle)
-    toggle_menu_btn.place(x=4, y=10)
+    act_treeview.column("#0", width=0, stretch=NO)
+    act_treeview.column("Username", anchor=W, width=120)
+    act_treeview.column("Email", anchor=W, width=120)
+    act_treeview.column("Date", anchor=W, width=60)
+    act_treeview.column("Time", anchor=W, width=60)
+    act_treeview.column("Pick Up", anchor=W, width=120)
+    act_treeview.column("Drop off", anchor=W, width=120)
+    act_treeview.column("Ride Status", anchor=W, width=80)
 
-    booking_window.mainloop()
+    act_treeview.heading("#0", text="", anchor=W)
+    act_treeview.heading("Username", text="Username", anchor=W)
+    act_treeview.heading("Email", text="Email", anchor=W)
+    act_treeview.heading("Date", text="Date", anchor=W)
+    act_treeview.heading("Time", text="Time", anchor=W)
+    act_treeview.heading("Pick Up", text="Pick Up", anchor=W)
+    act_treeview.heading("Drop off", text="Drop off", anchor=W)
+    act_treeview.heading("Ride Status", text="Ride Status", anchor=W)
+
+    # Insert sample data
+    act_treeview.insert(parent="", index="end", iid=0, text="",
+                        values=("John", "john@example.com", "07/16", "21:00", "Manila", "Alabang", "Completed"))
+
+    main.mainloop()
+
+
 
