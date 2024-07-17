@@ -364,5 +364,3 @@ def signup_window_open(event=None):
     terms_label.bind("<Button-1>", lambda event: show_terms())
 
     current_signup_window.mainloop()
-
-signup_window_open()
