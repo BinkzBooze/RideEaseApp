@@ -6,7 +6,9 @@ from pyperclip import *
 import os
 from tkinter.ttk import Treeview
 from Backend import *
-
+from API_KEY import *
+import datetime
+from DatabaseConnection import *
 
 
 def main_window():
@@ -170,7 +172,7 @@ def main_window():
             print(mode)
             clear_color_hometab()
             highlight_color = "#FFE8C8"
-            global vehicle
+            global vehicle_sel
             if mode == 0:
                 home_lbl_container1.configure(bg=highlight_color)
                 motorcycle_name.configure(bg=highlight_color)
@@ -179,8 +181,8 @@ def main_window():
                 container1_btn.configure(state=DISABLED)
                 container2_btn.configure(state=NORMAL)
                 container3_btn.configure(state=NORMAL)
-                vehicle = 'Motorcycle'
-                print(vehicle)
+                vehicle_sel = 'Motorcycle'
+                print(vehicle_sel)
                 booking_clicked()
             elif mode == 1:
                 home_lbl_container2.configure(bg=highlight_color)
@@ -190,8 +192,8 @@ def main_window():
                 container1_btn.configure(state=NORMAL)
                 container2_btn.configure(state=DISABLED)
                 container3_btn.configure(state=NORMAL)
-                vehicle = 'Car'
-                print(vehicle)
+                vehicle_sel = 'Car'
+                print(vehicle_sel)
                 booking_clicked()
             elif mode == 2:
                 home_lbl_container3.configure(bg=highlight_color)
@@ -201,8 +203,8 @@ def main_window():
                 container1_btn.configure(state=NORMAL)
                 container2_btn.configure(state=NORMAL)
                 container3_btn.configure(state=DISABLED)
-                vehicle = 'Van'
-                print(vehicle)
+                vehicle_sel = 'Van'
+                print(vehicle_sel)
                 booking_clicked()
 
         home_lbl_container1 = LabelFrame(main, bg=menu_bar_color, width=200, height=320, bd=3)
@@ -295,10 +297,71 @@ def main_window():
         print(global_mode_int)
 
         
-    def check_input():   
-        print(pickup_var.get())
-        print(dropoff_var.get())
-        print(pax_var.get())
+    def check_input():
+        vehicle = vehicle_sel.get()
+        start_location = pickup_var.get()
+        end_location = dropoff_var.get()
+        passengers = pax_var.get()
+
+        # VALIDATION OF INPUTS
+
+        # Validate if all fields are filled.
+        if not start_location or not end_location or not passengers:
+            messagebox.showerror("Error", "All fields must be filled.")
+            return
+
+        # Calculation of distance between two points using Google Maps API.
+        try:
+            km = Booking.get_distance(start_location, end_location, api_key)
+
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+            return
+
+        # Error if passenger is invalid.
+        if not passengers.isnumeric() or int(passengers) == 0:
+            messagebox.showerror("Error", "Passengers should be non-negative and non-zero integers.")
+            return
+        
+        # Assuming you have defined Car, Van, and their capacities
+        vehicle_map = {
+            'Motorcycle': Motorcycle(), 
+            'Car': Car(),
+            'Van': Van()   
+        }
+
+        selected_vehicle = vehicle_map.get(vehicle)
+
+        # Car's recommended capacity is 4, allow up to 6 passengers only.
+        if isinstance(vehicle, Car) and 4 < int(passengers) <= 6:
+            if not messagebox.askyesno("Confirmation", "The number of passengers exceeds the car's capacity. Are you sure you want to continue?"):
+                return
+            
+        # Van's recommended capacity is 8, allow up to 12 passengers only.
+        if isinstance(vehicle, Van) and 8 < int(passengers) <= 12:
+            if not messagebox.askyesno("Confirmation", "The number of passengers exceeds the van's capacity. Are you sure you want to continue?"):
+                return
+        
+        if int(passengers) > selected_vehicle.capacity:
+            messagebox.showerror("Error", f"The selected vehicle does not have enough capacity for the number of passengers.")
+            return
+        
+
+        booking = Booking(
+            user=fetch_user(),
+            pickup_location=start_location,
+            dropoff_location=end_location,
+            date_and_time=datetime.now(),
+            pax=int(passengers),
+            vehicle=selected_vehicle,
+            total_distance=km,
+            status="Pending"
+        )
+        
+        booking.save_to_db("RideEaseDatabase.db")  # Save booking to database
+
+
+
 
 
 
