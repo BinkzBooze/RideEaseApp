@@ -3,16 +3,9 @@ from Vehicle_Classes import Car, Van, Motorcycle
 
 # Creation of User's Booking Information
 class Booking:
-    booking_number = 1
 
-    def __init__(self, user, pickup_location, dropoff_location, date_and_time, pax, vehicle, total_distance, status, number=None):
-        if number is not None:
-            self.booking_number = number
-            Booking.booking_number = max(Booking.booking_number, number + 1)
-        else:
-            self.booking_number = Booking.booking_number
-            Booking.booking_number+= 1
-
+    def __init__(self, user, pickup_location, dropoff_location, date_and_time, pax, vehicle, total_distance, total_cost, status, booking_number=None):
+        self.booking_number = booking_number
         self.user = user
         self.pickup_location = pickup_location
         self.dropoff_location = dropoff_location
@@ -20,27 +13,26 @@ class Booking:
         self.pax = pax
         self.vehicle = vehicle
         self.total_distance = total_distance
-        self.total_cost = self.vehicle.calculate_cost(total_distance)
+        self.total_cost = total_cost
         self.status = status
 
-    @staticmethod
-    def save_to_db(self, db_filename):
+    def save_to_db(self, db_filename, db_tablename):
         conn = sqlite3.connect(db_filename)
         cursor = conn.cursor()
-        cursor.execute('''CREATE TABLE IF NOT EXISTS bookings (
-            Booking_Number INTEGER PRIMARY KEY,
-            Username TEXT,
-            Pickup_Location TEXT,
-            Dropoff_Location TEXT,
-            Date_and_Time TEXT,
-            Pax INTEGER,
-            Vehicle_Type TEXT,
-            Total_Distance REAL,
-            Total_Cost REAL,
-            Status TEXT,
+        cursor.execute(f'''CREATE TABLE IF NOT EXISTS "{db_tablename}" (
+                "Booking No." INTEGER PRIMARY KEY AUTOINCREMENT,
+                "Username" TEXT,
+                "Pickup Address" TEXT,
+                "Dropoff Address" TEXT,
+                "Date and Time" TEXT,
+                "Vehicle Type" TEXT,
+                "Pax" INTEGER,
+                "Total Distance" REAL,
+                "Total Cost" REAL,
+                "Status" TEXT
         )''')
-        cursor.execute('''INSERT INTO bookings (
-            Booking_Number, Username, Pickup_Location, Dropoff_Location, Date_and_Time, Pax, Vehicle_Type, Total_Distance, Total_Cost, Status
+        cursor.execute(f'''INSERT INTO "{db_tablename}" (
+            "Booking No.", "Username", "Pickup Address", "Dropoff Address", "Date and Time", "Pax", "Vehicle Type", "Total Distance", "Total Cost", "Status"
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',(
             self.booking_number,
             self.user,
@@ -48,7 +40,7 @@ class Booking:
             self.dropoff_location,
             self.date_and_time,
             self.pax,
-            self.vehicle.__class__.__name__,
+            self.vehicle,
             self.total_distance,
             self.total_cost,
             self.status
@@ -64,10 +56,10 @@ class Booking:
         conn.close()
 
     @classmethod
-    def from_db(cls, booking_id, db_filename):
+    def from_db(cls, booking_number, db_filename, db_tablename):
         conn = sqlite3.connect(db_filename)
         c = conn.cursor()
-        c.execute('SELECT * FROM bookings WHERE booking_id = ?', (booking_id,))
+        c.execute(f'SELECT * FROM "{db_tablename}" WHERE "Booking No." = ?', (booking_number,))
         row = c.fetchone()
         conn.close()
         if row:
