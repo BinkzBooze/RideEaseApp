@@ -122,6 +122,7 @@ def clear_main():
     del_acc_btn.place_forget()
 
     act_treeview.place_forget()
+    act_btn_cnl.place_forget()
 
 def homepage_clicked():
     clear_main()
@@ -168,6 +169,7 @@ def activity_clicked():
     clear_main()
 
     act_treeview.place(x=80, y=200)
+    act_btn_cnl.place(x=310, y=490)
 
 def load_image(path):
     if os.path.exists(path):
@@ -420,7 +422,7 @@ del_acc_btn = Button(main, text="View All Bookings", fg=main_page_color, bg=menu
                      activebackground=menu_bar_color, command=lambda: (btn_modes(activity_btn_ind, mode_int=3), activity_clicked()))
 
 # Activity
-act_treeview = Treeview(main, height=15)
+act_treeview = Treeview(main, height=12)
 act_treeview["columns"] = ("Username", "Email", "Date", "Time", "Pick Up", "Drop off", "Ride Status")
 
 act_treeview.column("#0", width=0, stretch=NO)
@@ -440,6 +442,9 @@ act_treeview.heading("Time", text="Time", anchor=W)
 act_treeview.heading("Pick Up", text="Pick Up", anchor=W)
 act_treeview.heading("Drop off", text="Drop off", anchor=W)
 act_treeview.heading("Ride Status", text="Ride Status", anchor=W)
+
+act_btn_cnl = Button(main, text="Cancel Booking", fg=main_page_color, bg=menu_bar_color, font=("Helvetica", 20),
+                          bd=1, activebackground=menu_bar_color)
 
 # Insert sample data
 act_treeview.insert(parent="", index="end", iid=0, text="",
