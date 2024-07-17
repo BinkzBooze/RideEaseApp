@@ -3,6 +3,7 @@
     #2. pip install tkinter 
     #3. pip install tkintermapview
     #4. pip install requests
+    #5. pip install datetime
 
 from tkinter import *
 from tkinter import messagebox
@@ -28,10 +29,10 @@ def login_window_open():
         password = login_password_entry.get().strip()
 
         # Check if the username exists
-        find_user = "SELECT * FROM users WHERE username = ?"
+        find_user = "SELECT username FROM users WHERE username = ?"
         cursor.execute(find_user, [username])
         account_username = cursor.fetchone()
-        
+     
         if account_username:
             # Check if the password matches
             find_password = "SELECT * FROM users WHERE username = ? AND password = ?"
@@ -41,7 +42,7 @@ def login_window_open():
             if account:
                 messagebox.showinfo("Login Successful", "Welcome, " + login_username_entry.get() + "!")
                 global current_user
-                current_user = account_username
+                current_user = str(account_username).strip("()',")
                 login_window.destroy()
                 booking_window_open(current_user)
             else:
